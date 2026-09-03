@@ -30,7 +30,12 @@ window.HB_CONFIG = {
      * 例：token base64 为 'Z2l0aHViX3BhdF9BQkNE'，可写成
      *     ['Z2l0aHVi', 'X3BhdF9B', 'QkNE']
      */
-    tokenParts: [],
+    tokenParts: [
+      'Z2l0aHViX3BhdF8xMUNDQVM0V0EwczF',
+      'ycTU5SURHVnRrX0RwZWExMXpwa0swdj',
+      'I0OVlZR2YwVHhVeXgxbmJlUU1ua3ZDe',
+      'nNMS1JFZkVTSEdIRzJHVmlWUDBnR1Uw',
+    ],
   },
 
   /**
