@@ -9,6 +9,9 @@ var DRAFT_KEY = 'huobu_survey_draft_v3';
 
 /* 商品数据：内嵌在 products-data.js，不发网络请求 */
 var DATA = window.HB_PRODUCTS || { brands: [], products: {}, topN: 10 };
+/* 消耗列标题与口径说明跟随数据源 */
+var COST_LABEL = DATA.costLabel || '消耗(万元)';
+var COST_PERIOD = (DATA.generatedFrom || '').indexOf('8 月') >= 0 ? '8月' : '近期';
 
 var state = SCH.newState();
 
@@ -20,7 +23,10 @@ var esc = function (s) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 };
 var fmt = function (n) {
-  return (typeof n === 'number' && isFinite(n)) ? n.toLocaleString('zh-CN', { maximumFractionDigits: 0 }) : '-';
+  if (typeof n !== 'number' || !isFinite(n)) return '-';
+  // 万元口径保留 1 位小数，元口径取整
+  var digits = (DATA.costUnit === '万元') ? 1 : 0;
+  return n.toLocaleString('zh-CN', { minimumFractionDigits: digits, maximumFractionDigits: digits });
 };
 var blk = function (act) {
   return state.activities[act] || (state.activities[act] = SCH.newBlock());
@@ -185,7 +191,7 @@ function productTable(act) {
   }).join('');
 
   return '<div class="tbl-wrap"><table class="tbl"><thead><tr>'
-    + '<th>#</th><th>商品名称（已清洗合并，可修改）</th><th>日均消耗(元)</th><th>参考成交单价(元)</th>'
+    + '<th>#</th><th>商品名称（已清洗合并，可修改）</th><th>' + esc(COST_LABEL) + '</th><th>参考成交单价(元)</th>'
     + '<th>补前价格</th><th>活动报名/最低到手价</th><th>实际到手价</th><th></th>'
     + '</tr></thead><tbody>'
     + (rows || '<tr><td colspan="8" style="color:#7a8399">暂无商品，点击下方「添加一行」</td></tr>')
@@ -195,7 +201,7 @@ function productTable(act) {
     + (isTop && all.length > (b.topCount || 5)
         ? '<button class="link-btn" data-act="' + esc(act) + '" data-more="1">展开 Top' + Math.min(all.length, 10) + '</button>' : '')
     + (isTop ? '<button class="link-btn" data-act="' + esc(act) + '" data-reset="1">重新拉取 Top' + (b.topCount || 5) + '</button>' : '')
-    + '<span class="hint">日均消耗、参考单价来自近期投放数据，仅用于对齐商品，无需修改。</span>'
+    + '<span class="hint">' + esc(COST_PERIOD) + '消耗、参考单价来自投放数据，仅用于对齐商品，无需修改。</span>'
     + '</div>';
 }
 

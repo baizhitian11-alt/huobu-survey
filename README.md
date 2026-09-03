@@ -1,6 +1,19 @@
 # 货补摸排问卷（金秋大促 · 客户活动报名与货补摸排）
 
-纯静态问卷站，**发 GitHub Pages 给外部客户填，后端也在 GitHub 上**（用 Issues 当数据库），运营侧一键导出 Excel。
+**已上线，在线入库模式**：品牌方点提交直接写进 GitHub issue，运营在汇总页一键拉取导出 Excel。
+
+| 用途 | 地址 |
+| --- | --- |
+| **问卷（发给品牌方）** | https://baizhitian11-alt.github.io/huobu-survey/ |
+| 汇总导出（运营自用） | https://baizhitian11-alt.github.io/huobu-survey/merge.html |
+| 原始数据 | https://github.com/baizhitian11-alt/huobu-survey/issues?q=label:survey |
+
+改完内容重新上线：`bash publish.sh`（一条命令搞定推送 + Pages）。
+
+## 职责划分（重要）
+
+- **问卷页 = 只给品牌方填**。没有任何导出/下载按钮，底部是「提交前确认」摘要，用大白话列出他填的内容 + 缺项提示，确认无误点提交即可。
+- **汇总页 = 只给运营用**。Excel 预览（双 Sheet 切换、类 Excel 表格）+ 一键导出 xlsx + 删除坏数据。
 
 ```
 survey/

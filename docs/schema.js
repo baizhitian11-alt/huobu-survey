@@ -45,9 +45,13 @@
     '整体备注',
   ];
 
+  /** 消耗列标题跟随数据源（products-data.js 里的 costLabel），默认按万元 */
+  var COST_LABEL = (typeof window !== 'undefined' && window.HB_PRODUCTS
+    && window.HB_PRODUCTS.costLabel) || '消耗(万元)';
+
   var DETAIL_HEADER = [
     '提交ID', '提交时间', '客户名称', '活动', '商品来源', '排名', '商品名称',
-    '日均消耗(元)', '参考成交单价(元)', '补前价格(元)', '活动报名/最低到手价(元)', '实际到手价(元)',
+    COST_LABEL, '参考成交单价(元)', '补前价格(元)', '活动报名/最低到手价(元)', '实际到手价(元)',
     '补贴力度(补前-实际到手)', '补贴率(%)',
   ];
 
