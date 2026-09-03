@@ -73,8 +73,9 @@
   }
 
   function issueTitle(data) {
+    var n = (data.products || []).filter(function (p) { return p && p.name; }).length;
     return '[' + (actName(data) || '问卷') + '] ' + (data.brand || '未填客户')
-      + ' · ' + (data.qualified || '') + ' · ' + (data.id || '');
+      + ' · ' + n + '个商品 · ' + (data.id || '');
   }
 
   /** issue 正文：人可读摘要 + 机器可解析 JSON 代码块 */
@@ -83,26 +84,10 @@
     var lines = [
       '**活动**：' + (actName(data) || '-'),
       '**客户名称**：' + (data.brand || '-'),
-      '**是否有资格**：' + (data.qualified || '-'),
+      '**商品数**：' + prods.length,
       '**提交时间**：' + (data.createdAt || ''),
       '',
     ];
-
-    if (data.qualified === '没资格') {
-      lines.push('### 无资格情况');
-      lines.push('- 原因：' + ((data.unqualifiedReasons || []).join('、') || '-'));
-      if (data.shopScore) lines.push('- 店铺分：' + data.shopScore);
-      if ((data.rateItems || []).length) {
-        var rv = data.rateValues || {};
-        lines.push('- 三率：' + data.rateItems.map(function (k) {
-          return k + (rv[k] ? ' ' + rv[k] : '');
-        }).join('、'));
-      }
-      if (data.unqualifiedOther) lines.push('- 其他：' + data.unqualifiedOther);
-      lines.push('- **是否需要沟通：' + (data.needTalk || '-') + '**');
-      if (data.talkNote) lines.push('- 诉求：' + data.talkNote);
-      lines.push('');
-    }
 
     if (prods.length) {
       var groups = {};
@@ -134,6 +119,15 @@
             extra = '｜' + ((p.reasons || []).join('、') || '-');
             if (p.smallLinkReason) extra += '｜小链接原因: ' + p.smallLinkReason;
             if (p.reasonOther) extra += '（' + p.reasonOther + '）';
+          } else if (k === '无提报资格') {
+            extra = '｜' + ((p.unqualifiedReasons || []).join('、') || '-');
+            if (p.shopScore) extra += '（店铺分 ' + p.shopScore + '）';
+            var ur = p.unqualifiedRates || {};
+            var us = Object.keys(ur).filter(function (x) { return ur[x]; })
+              .map(function (x) { return x + ' ' + ur[x]; });
+            if (us.length) extra += '｜三率: ' + us.join('、');
+            if (p.needTalk) extra += '｜' + p.needTalk;
+            if (p.talkNote) extra += '(' + p.talkNote + ')';
           }
           lines.push('- ' + p.name + extra);
         });

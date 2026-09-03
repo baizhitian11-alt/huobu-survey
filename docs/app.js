@@ -101,56 +101,6 @@ function checkGroup(cur, options, dataAttr) {
   }).join('') + '</div>';
 }
 
-/* ---------------- Step 2：资格 ---------------- */
-function renderQualify() {
-  var h = radioGroup('qualified', state.qualified,
-    [{ v: '有资格', label: '有资格报名' }, { v: '没资格', label: '没有资格' }],
-    'data-f="qualified" data-rerender="all"');
-
-  if (state.qualified === '没资格') {
-    h += '<div class="nest">'
-      + '<div class="q-title">主要原因（多选）</div>'
-      + checkGroup(state.unqualifiedReasons, SCH.UNQUALIFIED_REASONS,
-          'data-m="unqualifiedReasons" data-rerender="qualify"');
-
-    if ((state.unqualifiedReasons || []).indexOf('店铺分不达标') >= 0) {
-      h += '<label class="field" style="margin-top:12px;max-width:300px">'
-        + '<span class="label">当前店铺分 <span class="req">*</span></span>'
-        + '<input data-f="shopScore" value="' + esc(state.shopScore) + '" placeholder="如：4.2"/></label>';
-    }
-
-    if ((state.unqualifiedReasons || []).indexOf('三率不达标') >= 0) {
-      h += '<div style="margin-top:14px"><div class="q-title">哪一项不达标（可填当前值）</div>'
-        + checkGroup(state.rateItems, SCH.RATE_ITEMS, 'data-m="rateItems" data-rerender="qualify"');
-      if ((state.rateItems || []).length) {
-        h += '<div class="grid2" style="margin-top:10px">' + state.rateItems.map(function (r) {
-          return '<label class="field"><span class="label">' + esc(r) + '</span>'
-            + '<input data-rate="' + esc(r) + '" value="' + esc((state.rateValues || {})[r] || '')
-            + '" placeholder="如 2.5%"/></label>';
-        }).join('') + '</div>';
-      }
-      h += '</div>';
-    }
-
-    if ((state.unqualifiedReasons || []).indexOf('其他') >= 0) {
-      h += '<label class="field" style="margin-top:12px"><span class="label">其他原因说明</span>'
-        + '<input data-f="unqualifiedOther" value="' + esc(state.unqualifiedOther) + '" placeholder="请具体描述"/></label>';
-    }
-
-    h += '<div class="divider"></div>'
-      + '<div class="q-title">是否需要我们协助沟通改善？ <span class="req">*</span></div>'
-      + radioGroup('needTalk', state.needTalk, SCH.NEED_TALK, 'data-f="needTalk" data-rerender="qualify"');
-
-    if (state.needTalk === '需要沟通') {
-      h += '<label class="field" style="margin-top:10px"><span class="label">具体诉求</span>'
-        + '<textarea rows="2" data-f="talkNote" placeholder="例如：希望了解店铺分提升路径、想申请特批等">'
-        + esc(state.talkNote) + '</textarea></label>';
-    }
-    h += '</div>';
-  }
-
-  $('#qualifyBox').innerHTML = h;
-}
 
 /* ---------------- Step 3：by 商品填报 ---------------- */
 /** 一组价格输入（按补贴类型区分，key 为类型名） */
@@ -310,19 +260,52 @@ function productCard(p, i) {
     h += '</div>';
   }
 
+  if (st === '无提报资格') {
+    var uq = p.unqualifiedReasons || [];
+    h += '<div class="pnest">'
+      + '<div class="q-title sm">无资格的原因（多选） <span class="req">*</span></div>'
+      + checkGroup(uq, SCH.UNQUALIFIED_REASONS,
+          'data-pi="' + i + '" data-pm="unqualifiedReasons" data-rerender="products"');
+
+    if (uq.indexOf('店铺分不达标') >= 0) {
+      h += '<label class="field" style="margin-top:12px;max-width:260px">'
+        + '<span class="label">当前店铺分</span>'
+        + '<input data-pi="' + i + '" data-pf="shopScore" value="' + esc(p.shopScore) + '" placeholder="如：4.2"/></label>';
+    }
+
+    if (uq.indexOf('商品三率不达标') >= 0) {
+      var ur = p.unqualifiedRates || {};
+      h += '<div class="q-title sm" style="margin-top:12px">该商品近14天三率</div>'
+        + '<div class="price-row">' + SCH.RATE_ITEMS.map(function (r) {
+          return '<label class="field"><span class="label">' + esc(r) + '</span>'
+            + '<input data-pi="' + i + '" data-pu="' + esc(r) + '" value="' + esc(ur[r] || '')
+            + '" placeholder="如 2.5%"/></label>';
+        }).join('') + '</div>';
+    }
+
+    if (uq.indexOf('其他') >= 0) {
+      h += '<label class="field" style="margin-top:10px"><span class="label">其他原因说明</span>'
+        + '<input data-pi="' + i + '" data-pf="unqualifiedOther" value="' + esc(p.unqualifiedOther) + '" placeholder="请具体描述"/></label>';
+    }
+
+    h += '<div class="sub-sec">'
+      + '<div class="q-title sm">是否需要我们协助沟通改善？ <span class="req">*</span></div>'
+      + radioGroup('talk_' + i, p.needTalk, SCH.NEED_TALK,
+          'data-pi="' + i + '" data-pf="needTalk" data-rerender="products"', true);
+    if (p.needTalk === '需要沟通') {
+      h += '<label class="field" style="margin-top:10px"><span class="label">具体诉求</span>'
+        + '<textarea rows="2" data-pi="' + i + '" data-pf="talkNote" '
+        + 'placeholder="例如：希望了解入池条件、想申请特批等">' + esc(p.talkNote) + '</textarea></label>';
+    }
+    h += '</div></div>';
+  }
+
   return h + '</div></div>';
 }
 
 function renderProducts() {
   var wrap = $('#productCard');
   var box = $('#productBox');
-
-  if (state.qualified !== '有资格') {
-    wrap.style.display = 'none';
-    box.innerHTML = '';
-    return;
-  }
-  wrap.style.display = '';
 
   var all = brandProducts();
   if (!state.brand) {
@@ -370,73 +353,77 @@ function renderConfirm() {
       + '</ul></div>'
     : '<div class="sm-ok">✓ 已填完，可以提交了</div>';
 
-  if (state.brand) {
-    h += '<div class="sm-block">'
-      + '<div class="sm-row"><span class="sm-k">活动</span><span class="sm-v">' + esc(ACT.name) + '</span></div>'
-      + '<div class="sm-row"><span class="sm-k">客户名称</span><span class="sm-v">' + esc(state.brand) + '</span></div>'
-      + '<div class="sm-row"><span class="sm-k">是否有资格</span><span class="sm-v">' + esc(state.qualified || '未选') + '</span></div>';
+  if (!state.brand) {
+    el.innerHTML = h;
+    return;
+  }
 
-    if (state.qualified === '没资格') {
-      h += '<div class="sm-row"><span class="sm-k">原因</span><span class="sm-v">'
-        + esc((state.unqualifiedReasons || []).join('、') || '未填') + '</span></div>';
-      if (state.shopScore) {
-        h += '<div class="sm-row"><span class="sm-k">店铺分</span><span class="sm-v">' + esc(state.shopScore) + '</span></div>';
-      }
-      h += '<div class="sm-row"><span class="sm-k">是否需要沟通</span><span class="sm-v">'
-        + esc(state.needTalk || '未选') + '</span></div>';
-    }
-    h += '</div>';
+  h += '<div class="sm-block">'
+    + '<div class="sm-row"><span class="sm-k">活动</span><span class="sm-v">' + esc(ACT.name) + '</span></div>'
+    + '<div class="sm-row"><span class="sm-k">客户名称</span><span class="sm-v">' + esc(state.brand) + '</span></div>'
+    + '</div>';
 
-    if (state.qualified === '有资格') {
-      var groups = {};
-      state.products.forEach(function (p) {
-        if (!p.name) return;
-        (groups[p.status || '未填写'] = groups[p.status || '未填写'] || []).push(p);
-      });
-      SCH.PRODUCT_STATUS.concat(['未填写']).forEach(function (k) {
-        if (!groups[k]) return;
-        h += '<div class="sm-block"><div class="sm-title">' + esc(k) + '（' + groups[k].length + ' 个）</div>'
-          + '<div class="sm-prods">' + groups[k].map(function (p) {
-            var extra = '';
-            if (p.status === '已提报') {
-              var subs = (p.subTypes || []).length ? p.subTypes : [SCH.DEFAULT_PRICE_KEY];
-              extra = subs.map(function (key) {
-                var tag = key === SCH.DEFAULT_PRICE_KEY ? '' : '<em>' + esc(key) + '</em> ';
-                if (key !== SCH.DEFAULT_PRICE_KEY && !SCH.needPrice(ACT_KEY, key)) {
-                  return tag + '<span style="color:#7a8399">无需填价格</span>';
-                }
-                var pr = (p.prices && p.prices[key]) || {};
-                var parts = [];
-                if (pr.prePrice) parts.push('补前 ' + pr.prePrice);
-                if (pr.signupPrice) parts.push('报名 ' + pr.signupPrice);
-                if (pr.actualPrice) parts.push('到手 ' + pr.actualPrice);
-                return tag + (parts.length ? parts.join(' / ') : '<i>价格未填</i>');
-              }).join('<br/>');
+  var groups = {};
+  state.products.forEach(function (p) {
+    if (!p.name) return;
+    var k = p.status || '未填写';
+    (groups[k] = groups[k] || []).push(p);
+  });
 
-              extra += '<br/><span class="au">审核：' + esc(p.audit || '未填')
-                + (p.audit === '审核中' && p.auditWait ? '（' + esc(p.auditWait) + '）' : '')
-                + (p.audit === '拒审' && (p.rejectReasons || []).length ? ' — ' + esc(p.rejectReasons.join('、')) : '')
-                + '</span>';
-            } else if (p.status === '择机报') {
-              extra = p.planTime ? '预计 ' + esc(p.planTime) : '<i>时间未填</i>';
-            } else if (p.status === '未提报') {
-              extra = esc((p.reasons || []).join('、')) || '<i>原因未填</i>';
-              if ((p.reasons || []).indexOf('入选链接非大链接') >= 0) {
-                extra += '<br/><span class="au">小链接原因：'
-                  + (p.smallLinkReason ? esc(p.smallLinkReason) : '<i>未填</i>') + '</span>';
-              }
-            } else {
-              extra = '<i>待选择提报情况</i>';
+  SCH.PRODUCT_STATUS.concat(['未填写']).forEach(function (k) {
+    if (!groups[k]) return;
+    h += '<div class="sm-block"><div class="sm-title">' + esc(k) + '（' + groups[k].length + ' 个）</div>'
+      + '<div class="sm-prods">' + groups[k].map(function (p) {
+        var extra = '';
+
+        if (p.status === '已提报') {
+          var subs = (p.subTypes || []).length ? p.subTypes : [SCH.DEFAULT_PRICE_KEY];
+          extra = subs.map(function (key) {
+            var tag = key === SCH.DEFAULT_PRICE_KEY ? '' : '<em>' + esc(key) + '</em> ';
+            if (key !== SCH.DEFAULT_PRICE_KEY && !SCH.needPrice(ACT_KEY, key)) {
+              return tag + '<span style="color:#7a8399">无需填价格</span>';
             }
-            return '<div class="sm-prod"><b>' + esc(p.name) + '</b><span>' + extra + '</span></div>';
-          }).join('') + '</div></div>';
-      });
-    }
+            var pr = (p.prices && p.prices[key]) || {};
+            var parts = [];
+            if (pr.prePrice) parts.push('补前 ' + pr.prePrice);
+            if (pr.signupPrice) parts.push('报名 ' + pr.signupPrice);
+            if (pr.actualPrice) parts.push('到手 ' + pr.actualPrice);
+            return tag + (parts.length ? parts.join(' / ') : '<i>价格未填</i>');
+          }).join('<br/>');
 
-    if (state.remark) {
-      h += '<div class="sm-block"><div class="sm-row"><span class="sm-k">备注</span><span class="sm-v">'
-        + esc(state.remark) + '</span></div></div>';
-    }
+          extra += '<br/><span class="au">审核：' + esc(p.audit || '未填')
+            + (p.audit === '审核中' && p.auditWait ? '（' + esc(p.auditWait) + '）' : '')
+            + (p.audit === '拒审' && (p.rejectReasons || []).length ? ' — ' + esc(p.rejectReasons.join('、')) : '')
+            + '</span>';
+
+        } else if (p.status === '择机报') {
+          extra = p.planTime ? '预计 ' + esc(p.planTime) : '<i>时间未填</i>';
+
+        } else if (p.status === '未提报') {
+          extra = esc((p.reasons || []).join('、')) || '<i>原因未填</i>';
+          if ((p.reasons || []).indexOf('入选链接非大链接') >= 0) {
+            extra += '<br/><span class="au">小链接原因：'
+              + (p.smallLinkReason ? esc(p.smallLinkReason) : '<i>未填</i>') + '</span>';
+          }
+
+        } else if (p.status === '无提报资格') {
+          extra = esc((p.unqualifiedReasons || []).join('、')) || '<i>原因未填</i>';
+          if (p.shopScore) extra += '（店铺分 ' + esc(p.shopScore) + '）';
+          extra += '<br/><span class="au">'
+            + (p.needTalk === '需要沟通' ? '需要沟通' : (p.needTalk || '<i>未选是否沟通</i>'))
+            + (p.talkNote ? '：' + esc(p.talkNote) : '') + '</span>';
+
+        } else {
+          extra = '<i>待选择提报情况</i>';
+        }
+
+        return '<div class="sm-prod"><b>' + esc(p.name) + '</b><span>' + extra + '</span></div>';
+      }).join('') + '</div></div>';
+  });
+
+  if (state.remark) {
+    h += '<div class="sm-block"><div class="sm-row"><span class="sm-k">备注</span><span class="sm-v">'
+      + esc(state.remark) + '</span></div></div>';
   }
 
   el.innerHTML = h;
@@ -462,7 +449,6 @@ function renderBrandHint() {
 }
 
 function renderAll() {
-  renderQualify();
   renderProducts();
   saveDraft();
 }
@@ -470,7 +456,6 @@ function renderAll() {
 /* ---------------- 事件 ---------------- */
 function applyRerender(kind) {
   if (kind === 'all') renderAll();
-  else if (kind === 'qualify') { renderQualify(); renderProducts(); }
   else if (kind === 'products') renderProducts();
   saveDraft();
 }
@@ -516,6 +501,9 @@ function handleChange(e) {
     } else if (el.dataset.pq) {
       if (!p.qualityRates) p.qualityRates = {};
       p.qualityRates[el.dataset.pq] = el.value;
+    } else if (el.dataset.pu) {
+      if (!p.unqualifiedRates) p.unqualifiedRates = {};
+      p.unqualifiedRates[el.dataset.pu] = el.value;
     } else if (el.dataset.pf) {
       p[el.dataset.pf] = el.value;
     }
@@ -526,8 +514,6 @@ function handleChange(e) {
     if (!el.checked && j >= 0) a2.splice(j, 1);
   } else if (el.dataset.f) {
     state[el.dataset.f] = el.value;
-  } else if (el.dataset.rate) {
-    (state.rateValues || (state.rateValues = {}))[el.dataset.rate] = el.value;
   } else {
     return;
   }
@@ -558,11 +544,15 @@ function handleInput(e) {
       saveDraft();
       return;
     }
+    if (el.dataset.pu) {
+      if (!p.unqualifiedRates) p.unqualifiedRates = {};
+      p.unqualifiedRates[el.dataset.pu] = el.value;
+      saveDraft();
+      return;
+    }
     if (el.dataset.pf) p[el.dataset.pf] = el.value;
   } else if (el.dataset.f) {
     state[el.dataset.f] = el.value;
-  } else if (el.dataset.rate) {
-    (state.rateValues || (state.rateValues = {}))[el.dataset.rate] = el.value;
   } else {
     return;
   }
@@ -590,43 +580,44 @@ function handleClick(e) {
 function validate() {
   var miss = [];
   if (!state.brand.trim()) miss.push('客户名称');
-  if (!state.qualified) miss.push('是否有资格报名');
 
-  if (state.qualified === '没资格') {
-    if (!(state.unqualifiedReasons || []).length) miss.push('没资格的原因');
-    if ((state.unqualifiedReasons || []).indexOf('店铺分不达标') >= 0 && !state.shopScore) {
-      miss.push('当前店铺分');
+  var named = state.products.filter(function (p) { return p.name; });
+  if (!named.length) miss.push('至少填写 1 个商品');
+
+  named.forEach(function (p) {
+    var short = p.name.length > 14 ? p.name.slice(0, 14) + '…' : p.name;
+    if (!p.status) {
+      miss.push('商品「' + short + '」的提报情况');
+      return;
     }
-    if (!state.needTalk) miss.push('是否需要协助沟通');
-  }
 
-  if (state.qualified === '有资格') {
-    var named = state.products.filter(function (p) { return p.name; });
-    if (!named.length) miss.push('至少填写 1 个商品');
-    named.forEach(function (p) {
-      var short = p.name.length > 14 ? p.name.slice(0, 14) + '…' : p.name;
-      if (!p.status) {
-        miss.push('商品「' + short + '」的提报情况');
-        return;
+    if (p.status === '已提报') {
+      if ((ACT.subTypeNames || []).length && !(p.subTypes || []).length) {
+        miss.push('商品「' + short + '」的补贴类型');
       }
-      if (p.status === '已提报') {
-        if ((ACT.subTypeNames || []).length && !(p.subTypes || []).length) {
-          miss.push('商品「' + short + '」的补贴类型');
-        }
-        if (!p.audit) miss.push('商品「' + short + '」的审核进度');
-        if (p.audit === '拒审' && !(p.rejectReasons || []).length) {
-          miss.push('商品「' + short + '」的拒审原因');
-        }
+      if (!p.audit) miss.push('商品「' + short + '」的审核进度');
+      if (p.audit === '拒审' && !(p.rejectReasons || []).length) {
+        miss.push('商品「' + short + '」的拒审原因');
       }
-      if (p.status === '未提报') {
-        if (!(p.reasons || []).length) {
-          miss.push('商品「' + short + '」的不提报原因');
-        } else if ((p.reasons || []).indexOf('入选链接非大链接') >= 0 && !String(p.smallLinkReason || '').trim()) {
-          miss.push('商品「' + short + '」小链接不能提报的原因');
-        }
+    }
+
+    if (p.status === '未提报') {
+      if (!(p.reasons || []).length) {
+        miss.push('商品「' + short + '」的不提报原因');
+      } else if ((p.reasons || []).indexOf('入选链接非大链接') >= 0
+                 && !String(p.smallLinkReason || '').trim()) {
+        miss.push('商品「' + short + '」小链接不能提报的原因');
       }
-    });
-  }
+    }
+
+    if (p.status === '无提报资格') {
+      if (!(p.unqualifiedReasons || []).length) {
+        miss.push('商品「' + short + '」的无资格原因');
+      }
+      if (!p.needTalk) miss.push('商品「' + short + '」是否需要协助沟通');
+    }
+  });
+
   return miss;
 }
 
@@ -757,7 +748,7 @@ function init() {
     if (changed) {
       // 换客户时清掉旧商品，重新按新客户带出
       state.products = [];
-      if (state.qualified === '有资格' && brandProducts().length) pullProducts(state.topCount || 5);
+      if (brandProducts().length) pullProducts(state.topCount || 5);
       renderProducts();
     }
     saveDraft();
@@ -782,7 +773,7 @@ function init() {
   });
 
   // 有资格且已匹配客户时，自动带出商品
-  if (state.qualified === '有资格' && !state.products.length && brandProducts().length) {
+  if (!state.products.length && brandProducts().length) {
     pullProducts(5);
     renderProducts();
   }

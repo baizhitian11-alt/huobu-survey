@@ -62,7 +62,19 @@
   }
 
   /* ---------- 选项 ---------- */
-  var PRODUCT_STATUS = ['已提报', '择机报', '未提报'];
+  /** 商品提报情况。资格是"品"的维度：有些品在池、有些不在 */
+  var PRODUCT_STATUS = ['已提报', '择机报', '未提报', '无提报资格'];
+
+  /** 无提报资格的原因（商品维度） */
+  var UNQUALIFIED_REASONS = [
+    '商品不在活动池',
+    '类目/资质不符',
+    '商品三率不达标',
+    '店铺分不达标',
+    '历史违规限制',
+    '不清楚原因',
+    '其他',
+  ];
 
   /** 未提报原因。needDetail 的选项需要补充说明 */
   var NO_REPORT_REASONS = [
@@ -83,7 +95,6 @@
 
   var NEED_TALK = ['需要沟通', '暂不需要'];
   var RATE_ITEMS = ['近14天差评率', '近14天品退率', '近14天纠纷率'];
-  var UNQUALIFIED_REASONS = ['店铺分不达标', '三率不达标', '类目/资质不符', '不清楚原因', '其他'];
 
   /* 已提报 → 审核进度 */
   var AUDIT_STATUS = ['已过审', '审核中', '拒审', '其他'];
@@ -92,12 +103,10 @@
   var REJECT_REASONS = ['商品质量', '高价', '资质不符', '其他'];
 
   var MAIN_HEADER = [
-    '提交ID', '提交时间', '活动', '客户名称',
-    '是否有资格', '商品数',
-    '已提报数', '择机报数', '未提报数',
+    '提交ID', '提交时间', '活动', '客户名称', '商品数',
+    '已提报数', '择机报数', '未提报数', '无资格数',
     '过审数', '审核中数', '拒审数',
-    '无资格-原因', '无资格-店铺分', '无资格-三率不达标项', '无资格-三率数值',
-    '无资格-其他说明', '是否需要沟通', '沟通诉求',
+    '需沟通商品数',
     '备注',
   ];
 
@@ -110,7 +119,11 @@
     '审核进度', '审核已等待时长', '拒审原因',
     '商品质量-差评率', '商品质量-品退率', '商品质量-纠纷率',
     '拒审-提报价格', '天猫最低价', '抖音最低价', '快手最低价', '审核-其他说明',
-    '择机报-预计时间', '未提报原因', '小链接不能提报原因', '未提报-其他说明', '商品备注',
+    '择机报-预计时间',
+    '未提报原因', '小链接不能提报原因', '未提报-其他说明',
+    '无资格-原因', '无资格-店铺分', '无资格-三率数值', '无资格-其他说明',
+    '是否需要沟通', '沟通诉求',
+    '商品备注',
   ];
 
   /** 未勾选补贴类型时，价格存放在这个 key 下 */
@@ -129,7 +142,7 @@
       cost: p.cost === 0 || p.cost ? p.cost : '',
       refPrice: p.refPrice === 0 || p.refPrice ? p.refPrice : '',
       source: p.source || '自主填写',
-      status: '',            // 已提报 / 择机报 / 未提报
+      status: '',            // 已提报 / 择机报 / 未提报 / 无提报资格
       subTypes: [],          // 已提报 → 补贴类型（多选）
       /** 价格按补贴类型分开存（仅 needPrice 的类型才有） */
       prices: {},
@@ -137,7 +150,7 @@
       audit: '',             // 已过审 / 审核中 / 拒审 / 其他
       auditWait: '',         // 审核中 → 已等待时长
       rejectReasons: [],     // 拒审 → 原因
-      qualityRates: {},      // 拒审·商品质量 → 三率数据 {差评率, 品退率, 纠纷率}
+      qualityRates: {},      // 拒审·商品质量 → 三率数据
       rejectPrice: '',       // 拒审·高价 → 本次提报价格
       priceTmall: '',
       priceDouyin: '',
@@ -147,6 +160,13 @@
       reasons: [],           // 未提报 → 原因（多选）
       smallLinkReason: '',   // 未提报·入选链接非大链接 → 小链接不能提报的原因
       reasonOther: '',
+      // 无提报资格（商品维度）
+      unqualifiedReasons: [],
+      shopScore: '',
+      unqualifiedRates: {},  // 三率数值
+      unqualifiedOther: '',
+      needTalk: '',          // 是否需要协助沟通
+      talkNote: '',
       note: '',
     };
   }
@@ -156,16 +176,6 @@
     return {
       activityKey: activityKey || ACTIVITY_DEFS[0].key,
       brand: '',
-      qualified: '',          // 有资格 / 没资格
-      // 没资格分支
-      unqualifiedReasons: [],
-      shopScore: '',
-      rateItems: [],
-      rateValues: {},
-      unqualifiedOther: '',
-      needTalk: '',
-      talkNote: '',
-      // 有资格分支
       products: [],
       topCount: 5,
       productSource: 'top',
@@ -192,8 +202,8 @@
     return def ? def.name : (s && s.activityName) || '';
   }
 
-  function rateText(s) {
-    var rv = s.rateValues || {};
+  function rateText(obj) {
+    var rv = obj || {};
     return Object.keys(rv).filter(function (k) { return rv[k]; })
       .map(function (k) { return k + ':' + rv[k]; }).join('、');
   }
@@ -221,17 +231,16 @@
       var prods = (s.products || []).filter(function (p) { return p && p.name; });
 
       main.push([
-        id, t, act, S(s.brand),
-        S(s.qualified), prods.length || '',
-        countBy(prods, '已提报') || '', countBy(prods, '择机报') || '', countBy(prods, '未提报') || '',
+        id, t, act, S(s.brand), prods.length || '',
+        countBy(prods, '已提报') || '', countBy(prods, '择机报') || '',
+        countBy(prods, '未提报') || '', countBy(prods, '无提报资格') || '',
         countAudit(prods, '已过审') || '', countAudit(prods, '审核中') || '', countAudit(prods, '拒审') || '',
-        A(s.unqualifiedReasons), S(s.shopScore), A(s.rateItems), rateText(s),
-        S(s.unqualifiedOther), S(s.needTalk), S(s.talkNote),
+        prods.filter(function (p) { return p.needTalk === '需要沟通'; }).length || '',
         S(s.remark),
       ]);
 
       prods.forEach(function (p, i) {
-        // 已提报：按勾选的补贴类型逐行输出；没勾类型则出一行
+        // 已提报：按勾选的补贴类型逐行输出；其他状态出一行
         var keys;
         if (p.status === '已提报') {
           keys = (p.subTypes || []).length ? p.subTypes.slice() : [DEFAULT_PRICE_KEY];
@@ -257,7 +266,11 @@
             S(p.audit), S(p.auditWait), A(p.rejectReasons),
             S(qr['近14天差评率']), S(qr['近14天品退率']), S(qr['近14天纠纷率']),
             N(p.rejectPrice), N(p.priceTmall), N(p.priceDouyin), N(p.priceKuaishou), S(p.auditOther),
-            S(p.planTime), A(p.reasons), S(p.smallLinkReason), S(p.reasonOther), S(p.note),
+            S(p.planTime),
+            A(p.reasons), S(p.smallLinkReason), S(p.reasonOther),
+            A(p.unqualifiedReasons), S(p.shopScore), rateText(p.unqualifiedRates), S(p.unqualifiedOther),
+            S(p.needTalk), S(p.talkNote),
+            S(p.note),
           ]);
         });
       });
@@ -278,8 +291,9 @@
       },
       {
         name: '商品提报明细',
-        cols: [12, 18, 12, 14, 6, 50, 10, 12, 15, 10, 22, 12, 20, 14, 18, 11,
-               12, 16, 20, 14, 14, 14, 15, 13, 13, 13, 22, 16, 30, 26, 18, 20]
+        cols: [12, 18, 12, 14, 6, 50, 10, 12, 15, 11, 22, 12, 20, 14, 18, 11,
+               12, 16, 20, 14, 14, 14, 15, 13, 13, 13, 22, 16,
+               30, 26, 18, 24, 13, 26, 20, 13, 24, 20]
           .map(function (w) { return { w: w }; }),
         rows: f.detail,
       },

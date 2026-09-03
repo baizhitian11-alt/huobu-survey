@@ -171,23 +171,19 @@ function renderTabs() {
 
 function renderStats() {
   var list = filtered();
-  var brands = {}, qualified = 0, unqualified = 0, needTalk = 0;
-  var st = { '已提报': 0, '择机报': 0, '未提报': 0 };
+  var brands = {}, needTalk = 0;
+  var st = { '已提报': 0, '择机报': 0, '未提报': 0, '无提报资格': 0 };
   var au = { '已过审': 0, '审核中': 0, '拒审': 0 };
   var products = 0;
 
   list.forEach(function (s) {
     brands[s.brand] = 1;
-    if (s.qualified === '有资格') qualified++;
-    if (s.qualified === '没资格') {
-      unqualified++;
-      if (s.needTalk === '需要沟通') needTalk++;
-    }
     (s.products || []).forEach(function (p) {
       if (!p.name) return;
       products++;
       if (st[p.status] !== undefined) st[p.status]++;
       if (p.status === '已提报' && au[p.audit] !== undefined) au[p.audit]++;
+      if (p.needTalk === '需要沟通') needTalk++;
     });
   });
 
@@ -198,16 +194,15 @@ function renderStats() {
   $('#stats').innerHTML = [
     cell('已回收', list.length),
     cell('覆盖客户', Object.keys(brands).filter(Boolean).length),
-    cell('有资格', qualified),
-    cell('没资格', unqualified),
-    cell('需沟通', needTalk, needTalk ? 'warn' : ''),
     cell('商品总数', products),
     cell('已提报', st['已提报'], 'ok'),
     cell('择机报', st['择机报']),
     cell('未提报', st['未提报']),
+    cell('无提报资格', st['无提报资格']),
     cell('已过审', au['已过审'], 'ok'),
     cell('审核中', au['审核中']),
     cell('拒审', au['拒审'], au['拒审'] ? 'warn' : ''),
+    cell('需沟通商品', needTalk, needTalk ? 'warn' : ''),
   ].join('');
 }
 
@@ -221,20 +216,19 @@ function renderTable() {
     var au = function (k) {
       return prods.filter(function (p) { return p.status === '已提报' && p.audit === k; }).length;
     };
-    var detail = s.qualified === '有资格'
-      ? '<span class="badge ok">已提报 ' + cnt('已提报') + '</span> '
-        + '<span class="badge">择机 ' + cnt('择机报') + '</span> '
-        + '<span class="badge">未报 ' + cnt('未提报') + '</span>'
-        + (au('拒审') ? ' <span class="badge warn">拒审 ' + au('拒审') + '</span>' : '')
-        + (au('审核中') ? ' <span class="badge">审核中 ' + au('审核中') + '</span>' : '')
-      : '<span class="badge">' + esc((s.unqualifiedReasons || []).join('、') || '-') + '</span>'
-        + (s.needTalk === '需要沟通' ? ' <span class="badge warn">需沟通</span>' : '');
+    var talk = prods.filter(function (p) { return p.needTalk === '需要沟通'; }).length;
+    var detail = '<span class="badge ok">已提报 ' + cnt('已提报') + '</span> '
+      + '<span class="badge">择机 ' + cnt('择机报') + '</span> '
+      + '<span class="badge">未报 ' + cnt('未提报') + '</span>'
+      + (cnt('无提报资格') ? ' <span class="badge">无资格 ' + cnt('无提报资格') + '</span>' : '')
+      + (au('拒审') ? ' <span class="badge warn">拒审 ' + au('拒审') + '</span>' : '')
+      + (au('审核中') ? ' <span class="badge">审核中 ' + au('审核中') + '</span>' : '')
+      + (talk ? ' <span class="badge warn">需沟通 ' + talk + '</span>' : '');
 
     rows.push('<tr>'
       + '<td>' + esc(SCH.fmtTime(s.createdAt).slice(5, 16)) + '</td>'
       + '<td><span class="badge">' + esc(SCH.activityName(s)) + '</span></td>'
       + '<td><b>' + esc(s.brand) + '</b></td>'
-      + '<td>' + esc(s.qualified || '-') + '</td>'
       + '<td>' + detail + '</td>'
       + '<td>' + (prods.length || '-') + '</td>'
       + '<td>' + (s.__issueUrl
@@ -246,7 +240,7 @@ function renderTable() {
   });
 
   $('#list tbody').innerHTML = rows.join('')
-    || '<tr><td colspan="8" style="color:#7a8399">暂无数据。点「刷新数据」从远端拉取，或拖入回执文件。</td></tr>';
+    || '<tr><td colspan="7" style="color:#7a8399">暂无数据。点「刷新数据」从远端拉取，或拖入回执文件。</td></tr>';
 }
 
 function renderPreview() {
