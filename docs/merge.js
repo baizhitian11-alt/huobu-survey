@@ -138,7 +138,11 @@ function render() {
         + '<td>' + (head ? (s.__issueUrl
             ? '<a href="' + esc(s.__issueUrl) + '" target="_blank">#' + esc(s.__issue) + '</a>'
             : esc(s.id)) : '') + '</td>'
-        + '<td>' + (head ? '<button class="row-del" data-id="' + esc(s.id) + '" title="从列表移除">×</button>' : '') + '</td>'
+        + '<td>' + (head
+            ? '<button class="row-del" data-id="' + esc(s.id) + '"'
+              + (s.__issue ? ' data-issue="' + esc(s.__issue) + '"' : '')
+              + ' title="' + (s.__issue ? '删除（同时关闭 GitHub 上的记录）' : '从列表移除') + '">×</button>'
+            : '') + '</td>'
         + '</tr>');
     });
   });
@@ -240,6 +244,21 @@ $('#btnClear').addEventListener('click', function () {
 $('#list').addEventListener('click', function (e) {
   var btn = e.target.closest('button[data-id]');
   if (!btn) return;
+  var issue = btn.dataset.issue;
+
+  if (issue) {
+    if (!confirm('删除这份问卷？\n\n会同时关闭 GitHub 上的记录 #' + issue + '（可在 GitHub 上重新打开找回）。')) return;
+    if (GHUB && GHUB.enabled()) {
+      GHUB.close(issue).catch(function (err) {
+        alert('GitHub 上关闭失败：' + err.message + '\n（仅从本机列表移除）');
+      });
+    } else {
+      alert('未配置 token，只能从本机列表移除；GitHub 上的记录仍保留。');
+    }
+  } else if (!confirm('从列表移除这份问卷？')) {
+    return;
+  }
+
   LIST = LIST.filter(function (x) { return x.id !== btn.dataset.id; });
   save();
   render();

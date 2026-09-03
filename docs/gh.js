@@ -139,14 +139,14 @@
     }
   }
 
-  /** 拉取全部问卷（自动翻页） */
+  /** 拉取全部问卷（自动翻页）。只取 open 的 issue —— 关闭即视为删除 */
   function list(onProgress) {
     if (!readable()) return Promise.reject(new Error('未配置 github.repo'));
     var out = [];
     var page = 1;
 
     function next() {
-      var url = API + '/repos/' + GH.repo + '/issues?state=all&per_page=100&labels='
+      var url = API + '/repos/' + GH.repo + '/issues?state=open&per_page=100&labels='
         + encodeURIComponent(LABEL) + '&page=' + page;
       return fetch(url, { headers: headers(true) }).then(function (r) {
         return r.json().then(function (arr) {
