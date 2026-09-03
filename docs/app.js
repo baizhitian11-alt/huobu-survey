@@ -194,21 +194,34 @@ function productCard(p, i) {
         'data-pi="' + i + '" data-pf="status" data-rerender="products"', true);
 
   if (st === '已提报') {
-    var subs = ACT.subTypes || [];
+    var subNames = ACT.subTypeNames || [];
     var picked = p.subTypes || [];
+    // 只有需要填价格的类型才展示价格区
+    var priced = picked.filter(function (k) { return SCH.needPrice(ACT_KEY, k); });
+    var noPriced = picked.filter(function (k) { return !SCH.needPrice(ACT_KEY, k); });
+
     h += '<div class="pnest">';
 
-    if (subs.length) {
-      h += '<div class="q-title sm">补贴类型（多选，可分别填价格） <span class="req">*</span></div>'
-        + checkGroup(picked, subs, 'data-pi="' + i + '" data-pm="subTypes" data-rerender="products"');
+    if (subNames.length) {
+      h += '<div class="q-title sm">补贴类型（多选） <span class="req">*</span></div>'
+        + checkGroup(picked, subNames, 'data-pi="' + i + '" data-pm="subTypes" data-rerender="products"');
     }
 
-    if (!subs.length) {
+    if (!subNames.length) {
       h += priceBlock(p, i, SCH.DEFAULT_PRICE_KEY, '');
     } else if (!picked.length) {
-      h += '<div class="tip-inline">↑ 先选补贴类型，再填对应的价格</div>';
+      h += '<div class="tip-inline">↑ 先选补贴类型</div>';
     } else {
-      h += picked.map(function (k) { return priceBlock(p, i, k, k); }).join('');
+      if (priced.length) {
+        h += priced.map(function (k) { return priceBlock(p, i, k, k); }).join('');
+      }
+      // 大场/跃迁激励类型：小店后台不填补贴价，只需与问卷一致
+      noPriced.forEach(function (k) {
+        h += '<div class="pblock no-price">'
+          + '<div class="pblock-tag">' + esc(k) + '</div>'
+          + '<div class="np-tip">该类型走激励逻辑，小店后台无需填补贴价格，勾选即可。</div>'
+          + '</div>';
+      });
     }
 
     /* ---- 审核进度 ---- */
@@ -218,9 +231,9 @@ function productCard(p, i) {
           'data-pi="' + i + '" data-pf="audit" data-rerender="products"', true);
 
     if (p.audit === '审核中') {
-      h += '<div class="pnest2"><div class="q-title sm">是否已超过 7 个工作日？</div>'
-        + radioGroup('slow_' + i, p.auditSlow, ['是', '否'],
-            'data-pi="' + i + '" data-pf="auditSlow"', true)
+      h += '<div class="pnest2"><div class="q-title sm">已等待多久？</div>'
+        + radioGroup('wait_' + i, p.auditWait, SCH.AUDIT_WAIT,
+            'data-pi="' + i + '" data-pf="auditWait"', true)
         + '</div>';
     }
 
@@ -228,6 +241,17 @@ function productCard(p, i) {
       h += '<div class="pnest2"><div class="q-title sm">拒审原因（多选）</div>'
         + checkGroup(p.rejectReasons, SCH.REJECT_REASONS,
             'data-pi="' + i + '" data-pm="rejectReasons" data-rerender="products"');
+
+      // 商品质量 → 补三率数据
+      if ((p.rejectReasons || []).indexOf('商品质量') >= 0) {
+        var qr = p.qualityRates || {};
+        h += '<div class="q-title sm" style="margin-top:12px">该商品近14天三率（用于核对拒审依据）</div>'
+          + '<div class="price-row">' + SCH.RATE_ITEMS.map(function (r) {
+            return '<label class="field"><span class="label">' + esc(r) + '</span>'
+              + '<input data-pi="' + i + '" data-pq="' + esc(r) + '" value="' + esc(qr[r] || '')
+              + '" placeholder="如 2.5%"/></label>';
+          }).join('') + '</div>';
+      }
 
       if ((p.rejectReasons || []).indexOf('高价') >= 0) {
         h += '<div class="q-title sm" style="margin-top:12px">价格对比（用于申诉，选填）</div>'
@@ -267,10 +291,19 @@ function productCard(p, i) {
 
   if (st === '未提报') {
     h += '<div class="pnest">'
-      + '<div class="q-title sm">不提报的原因（多选）</div>'
+      + '<div class="q-title sm">不提报的原因（多选） <span class="req">*</span></div>'
       + checkGroup(p.reasons, SCH.NO_REPORT_REASONS,
           'data-pi="' + i + '" data-pm="reasons" data-rerender="products"');
-    if ((p.reasons || []).indexOf('其他') >= 0) {
+
+    var rs = p.reasons || [];
+    if (rs.indexOf('入选链接非大链接') >= 0) {
+      h += '<label class="field" style="margin-top:12px">'
+        + '<span class="label">小链接不能提报的原因 <span class="req">*</span></span>'
+        + '<textarea rows="2" data-pi="' + i + '" data-pf="smallLinkReason" '
+        + 'placeholder="例如：小链接销量不足无法入池 / 小链接价格无法破价 / 主推大链接不在活动池内等">'
+        + esc(p.smallLinkReason) + '</textarea></label>';
+    }
+    if (rs.indexOf('其他') >= 0) {
       h += '<label class="field" style="margin-top:10px"><span class="label">其他原因</span>'
         + '<input data-pi="' + i + '" data-pf="reasonOther" value="' + esc(p.reasonOther) + '" placeholder="请具体描述"/></label>';
     }
@@ -368,22 +401,30 @@ function renderConfirm() {
             if (p.status === '已提报') {
               var subs = (p.subTypes || []).length ? p.subTypes : [SCH.DEFAULT_PRICE_KEY];
               extra = subs.map(function (key) {
+                var tag = key === SCH.DEFAULT_PRICE_KEY ? '' : '<em>' + esc(key) + '</em> ';
+                if (key !== SCH.DEFAULT_PRICE_KEY && !SCH.needPrice(ACT_KEY, key)) {
+                  return tag + '<span style="color:#7a8399">无需填价格</span>';
+                }
                 var pr = (p.prices && p.prices[key]) || {};
                 var parts = [];
                 if (pr.prePrice) parts.push('补前 ' + pr.prePrice);
                 if (pr.signupPrice) parts.push('报名 ' + pr.signupPrice);
                 if (pr.actualPrice) parts.push('到手 ' + pr.actualPrice);
-                var tag = key === SCH.DEFAULT_PRICE_KEY ? '' : '<em>' + esc(key) + '</em> ';
                 return tag + (parts.length ? parts.join(' / ') : '<i>价格未填</i>');
               }).join('<br/>');
+
               extra += '<br/><span class="au">审核：' + esc(p.audit || '未填')
-                + (p.audit === '审核中' && p.auditSlow ? '（超7个工作日：' + esc(p.auditSlow) + '）' : '')
+                + (p.audit === '审核中' && p.auditWait ? '（' + esc(p.auditWait) + '）' : '')
                 + (p.audit === '拒审' && (p.rejectReasons || []).length ? ' — ' + esc(p.rejectReasons.join('、')) : '')
                 + '</span>';
             } else if (p.status === '择机报') {
               extra = p.planTime ? '预计 ' + esc(p.planTime) : '<i>时间未填</i>';
             } else if (p.status === '未提报') {
               extra = esc((p.reasons || []).join('、')) || '<i>原因未填</i>';
+              if ((p.reasons || []).indexOf('入选链接非大链接') >= 0) {
+                extra += '<br/><span class="au">小链接原因：'
+                  + (p.smallLinkReason ? esc(p.smallLinkReason) : '<i>未填</i>') + '</span>';
+              }
             } else {
               extra = '<i>待选择提报情况</i>';
             }
@@ -466,10 +507,15 @@ function handleChange(e) {
       var i = arr.indexOf(el.value);
       if (el.checked && i < 0) arr.push(el.value);
       if (!el.checked && i >= 0) arr.splice(i, 1);
-      // 勾选补贴类型时，顺带准备好对应的价格组
-      if (el.dataset.pm === 'subTypes' && el.checked) priceOf(p, el.value);
+      // 勾选需要价格的补贴类型时，顺带准备好对应的价格组
+      if (el.dataset.pm === 'subTypes' && el.checked && SCH.needPrice(ACT_KEY, el.value)) {
+        priceOf(p, el.value);
+      }
     } else if (el.dataset.pk) {
       priceOf(p, el.dataset.pk)[el.dataset.pf] = el.value;
+    } else if (el.dataset.pq) {
+      if (!p.qualityRates) p.qualityRates = {};
+      p.qualityRates[el.dataset.pq] = el.value;
     } else if (el.dataset.pf) {
       p[el.dataset.pf] = el.value;
     }
@@ -504,6 +550,12 @@ function handleInput(e) {
       try { localStorage.setItem(DRAFT_KEY, JSON.stringify(state)); } catch (err) {}
       if (confirmTimer) clearTimeout(confirmTimer);
       confirmTimer = setTimeout(function () { renderProducts(); renderConfirm(); }, 900);
+      return;
+    }
+    if (el.dataset.pq) {
+      if (!p.qualityRates) p.qualityRates = {};
+      p.qualityRates[el.dataset.pq] = el.value;
+      saveDraft();
       return;
     }
     if (el.dataset.pf) p[el.dataset.pf] = el.value;
@@ -558,12 +610,19 @@ function validate() {
         return;
       }
       if (p.status === '已提报') {
-        if ((ACT.subTypes || []).length && !(p.subTypes || []).length) {
+        if ((ACT.subTypeNames || []).length && !(p.subTypes || []).length) {
           miss.push('商品「' + short + '」的补贴类型');
         }
         if (!p.audit) miss.push('商品「' + short + '」的审核进度');
         if (p.audit === '拒审' && !(p.rejectReasons || []).length) {
           miss.push('商品「' + short + '」的拒审原因');
+        }
+      }
+      if (p.status === '未提报') {
+        if (!(p.reasons || []).length) {
+          miss.push('商品「' + short + '」的不提报原因');
+        } else if ((p.reasons || []).indexOf('入选链接非大链接') >= 0 && !String(p.smallLinkReason || '').trim()) {
+          miss.push('商品「' + short + '」小链接不能提报的原因');
         }
       }
     });

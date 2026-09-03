@@ -12,7 +12,10 @@
 }(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  /* ---------- 活动定义：新增活动只在这里加一项 + 复制一个 html ---------- */
+  /* ---------- 活动定义：新增活动只在这里加一项 + 复制一个 html ----------
+   * subTypes[].needPrice：该补贴类型是否需要填补贴价格。
+   *   大场/跃迁激励走的是激励逻辑，小店后台不填补贴价，因此为 false。
+   */
   var ACTIVITY_DEFS = [
     {
       key: 'manjian',
@@ -20,8 +23,11 @@
       page: 'manjian.html',
       desc: '金秋大促跨店满减补贴',
       color: '#d4741a',
-      /** 该活动下可选的补贴类型（提报时勾选） */
-      subTypes: ['跨店满减（全资）', '跨店满减（混资）', '直播大场/跃迁激励'],
+      subTypes: [
+        { name: '跨店满减（全资）', needPrice: true },
+        { name: '跨店满减（混资）', needPrice: true },
+        { name: '直播大场/跃迁激励', needPrice: false },
+      ],
     },
     {
       key: 'huobu',
@@ -29,23 +35,60 @@
       page: 'huobu.html',
       desc: '官方商品补贴（含心智品专项）',
       color: '#1a7a4a',
-      subTypes: ['官方补贴', '官方补贴心智品专项'],
+      subTypes: [
+        { name: '官方补贴', needPrice: true },
+        { name: '官方补贴心智品专项', needPrice: true },
+      ],
     },
   ];
 
   var ACTIVITY_BY_KEY = {};
-  ACTIVITY_DEFS.forEach(function (a) { ACTIVITY_BY_KEY[a.key] = a; });
+  ACTIVITY_DEFS.forEach(function (a) {
+    ACTIVITY_BY_KEY[a.key] = a;
+    // 便捷索引：类型名 -> 是否需要价格
+    a.needPriceOf = {};
+    a.subTypeNames = a.subTypes.map(function (s) {
+      a.needPriceOf[s.name] = s.needPrice;
+      return s.name;
+    });
+  });
   var ACTIVITIES = ACTIVITY_DEFS.map(function (a) { return a.name; });
+
+  /** 某活动下某补贴类型是否需要填价格 */
+  function needPrice(activityKey, subTypeName) {
+    var a = ACTIVITY_BY_KEY[activityKey];
+    if (!a) return true;
+    return a.needPriceOf[subTypeName] !== false;
+  }
 
   /* ---------- 选项 ---------- */
   var PRODUCT_STATUS = ['已提报', '择机报', '未提报'];
-  var NO_REPORT_REASONS = ['渠道不破价', '价格/利润空间不足', '活动力度/玩法不合适', '库存不足', '其他'];
+
+  /** 未提报原因。needDetail 的选项需要补充说明 */
+  var NO_REPORT_REASONS = [
+    '渠道不破价',
+    '价格/利润空间不足',
+    '活动力度/玩法不合适',
+    '库存不足',
+    '商品不在池',
+    '主链接不在池',
+    '入选链接非大链接',
+    '其他',
+  ];
+  /** 选中后需要额外补充原因的选项 */
+  var NO_REPORT_NEED_DETAIL = {
+    '入选链接非大链接': '小链接不能提报的原因',
+    '其他': '其他原因',
+  };
+
   var NEED_TALK = ['需要沟通', '暂不需要'];
   var RATE_ITEMS = ['近14天差评率', '近14天品退率', '近14天纠纷率'];
   var UNQUALIFIED_REASONS = ['店铺分不达标', '三率不达标', '类目/资质不符', '不清楚原因', '其他'];
 
   /* 已提报 → 审核进度 */
   var AUDIT_STATUS = ['已过审', '审核中', '拒审', '其他'];
+  /** 审核中 → 已等待时长 */
+  var AUDIT_WAIT = ['7 天内', '7-14 天', '超过半个月仍未通过'];
   var REJECT_REASONS = ['商品质量', '高价', '资质不符', '其他'];
 
   var MAIN_HEADER = [
@@ -64,9 +107,10 @@
     '提报情况', '补贴类型',
     '补前价格(元)', '活动报名/最低到手价(元)', '实际到手价(元)',
     '补贴力度(补前-实际到手)', '补贴率(%)',
-    '审核进度', '是否超7个工作日', '拒审原因', '拒审-提报价格',
-    '天猫最低价', '抖音最低价', '快手最低价', '审核-其他说明',
-    '择机报-预计时间', '未提报原因', '未提报-其他说明', '商品备注',
+    '审核进度', '审核已等待时长', '拒审原因',
+    '商品质量-差评率', '商品质量-品退率', '商品质量-纠纷率',
+    '拒审-提报价格', '天猫最低价', '抖音最低价', '快手最低价', '审核-其他说明',
+    '择机报-预计时间', '未提报原因', '小链接不能提报原因', '未提报-其他说明', '商品备注',
   ];
 
   /** 未勾选补贴类型时，价格存放在这个 key 下 */
@@ -87,19 +131,21 @@
       source: p.source || '自主填写',
       status: '',            // 已提报 / 择机报 / 未提报
       subTypes: [],          // 已提报 → 补贴类型（多选）
-      /** 价格按补贴类型分开存：{ '跨店满减（全资）': {prePrice,signupPrice,actualPrice}, ... } */
+      /** 价格按补贴类型分开存（仅 needPrice 的类型才有） */
       prices: {},
       // 已提报 → 审核进度
       audit: '',             // 已过审 / 审核中 / 拒审 / 其他
-      auditSlow: '',         // 审核中 → 是否超 7 个工作日
+      auditWait: '',         // 审核中 → 已等待时长
       rejectReasons: [],     // 拒审 → 原因
+      qualityRates: {},      // 拒审·商品质量 → 三率数据 {差评率, 品退率, 纠纷率}
       rejectPrice: '',       // 拒审·高价 → 本次提报价格
       priceTmall: '',
       priceDouyin: '',
       priceKuaishou: '',
       auditOther: '',        // 其他情况说明
       planTime: '',          // 择机报 → 预计提报时间
-      reasons: [],           // 未提报 → 原因
+      reasons: [],           // 未提报 → 原因（多选）
+      smallLinkReason: '',   // 未提报·入选链接非大链接 → 小链接不能提报的原因
       reasonOther: '',
       note: '',
     };
@@ -201,15 +247,17 @@
             ? Math.round((pre - actual) * 100) / 100 : '';
           var rate = (typeof pre === 'number' && typeof actual === 'number' && pre > 0)
             ? Math.round(((pre - actual) / pre) * 10000) / 100 : '';
+          var qr = p.qualityRates || {};
 
           detail.push([
             id, t, act, S(s.brand), i + 1, S(p.name), S(p.source),
             N(p.cost), N(p.refPrice),
             S(p.status), key === DEFAULT_PRICE_KEY ? '' : key,
             pre, N(pr.signupPrice), actual, gap, rate,
-            S(p.audit), S(p.auditSlow), A(p.rejectReasons), N(p.rejectPrice),
-            N(p.priceTmall), N(p.priceDouyin), N(p.priceKuaishou), S(p.auditOther),
-            S(p.planTime), A(p.reasons), S(p.reasonOther), S(p.note),
+            S(p.audit), S(p.auditWait), A(p.rejectReasons),
+            S(qr['近14天差评率']), S(qr['近14天品退率']), S(qr['近14天纠纷率']),
+            N(p.rejectPrice), N(p.priceTmall), N(p.priceDouyin), N(p.priceKuaishou), S(p.auditOther),
+            S(p.planTime), A(p.reasons), S(p.smallLinkReason), S(p.reasonOther), S(p.note),
           ]);
         });
       });
@@ -231,7 +279,7 @@
       {
         name: '商品提报明细',
         cols: [12, 18, 12, 14, 6, 50, 10, 12, 15, 10, 22, 12, 20, 14, 18, 11,
-               12, 16, 20, 15, 13, 13, 13, 22, 16, 24, 18, 20]
+               12, 16, 20, 14, 14, 14, 15, 13, 13, 13, 22, 16, 30, 26, 18, 20]
           .map(function (w) { return { w: w }; }),
         rows: f.detail,
       },
@@ -242,12 +290,15 @@
     ACTIVITY_DEFS: ACTIVITY_DEFS,
     ACTIVITY_BY_KEY: ACTIVITY_BY_KEY,
     ACTIVITIES: ACTIVITIES,
+    needPrice: needPrice,
     PRODUCT_STATUS: PRODUCT_STATUS,
     NO_REPORT_REASONS: NO_REPORT_REASONS,
+    NO_REPORT_NEED_DETAIL: NO_REPORT_NEED_DETAIL,
     NEED_TALK: NEED_TALK,
     RATE_ITEMS: RATE_ITEMS,
     UNQUALIFIED_REASONS: UNQUALIFIED_REASONS,
     AUDIT_STATUS: AUDIT_STATUS,
+    AUDIT_WAIT: AUDIT_WAIT,
     REJECT_REASONS: REJECT_REASONS,
     MAIN_HEADER: MAIN_HEADER,
     DETAIL_HEADER: DETAIL_HEADER,

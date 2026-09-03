@@ -409,3 +409,7 @@ table.xls td.empty { background: #fcfcfd; }
 .sm-prod .au {
   color: #56637d; font-size: 11.5px; display: inline-block; margin-top: 2px;
 }
+
+/* 无需填价格的补贴类型（如大场/跃迁激励） */
+.pblock.no-price { background: #fafbfd; border-style: dashed; }
+.np-tip { font-size: 12.5px; color: var(--muted); margin-top: 4px; line-height: 1.6; }
