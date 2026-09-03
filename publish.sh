@@ -118,6 +118,13 @@ for i in $(seq 1 40); do
 done
 echo ""
 
+if grep -q "tokenParts: \[\]" docs/config.js; then
+  MODE="离线回执 —— 客户提交后下载 .hbjson 文件发回给你，在 merge.html 拖入汇总
+           想改成直接入库：python3 set_token.py <token> && bash publish.sh"
+else
+  MODE="✓ 在线入库 —— 客户点提交直接写进 GitHub issue，在 merge.html 点「从远端拉取」即可"
+fi
+
 cat <<EOF
 ================================================================
 上线完成 🎉
@@ -132,12 +139,6 @@ cat <<EOF
   https://github.com/$SLUG/issues?q=label:survey
 
 ------------------------------------------------
-如果要让客户"点提交就直接入库"，再做一步：
-  1. 生成 fine-grained token（只给 $SLUG 的 Issues: Read and write）
-     https://github.com/settings/personal-access-tokens/new
-  2. python3 set_token.py <那个token>
-  3. bash publish.sh        # 重新发布
-不做这步也能用：客户提交会下载回执文件，发回给你，
-在 merge.html 里拖进去即可汇总。
+提交模式：$MODE
 ================================================================
 EOF
