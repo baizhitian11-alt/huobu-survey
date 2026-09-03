@@ -153,6 +153,32 @@ function renderQualify() {
 }
 
 /* ---------------- Step 3：by 商品填报 ---------------- */
+/** 一组价格输入（按补贴类型区分，key 为类型名） */
+function priceBlock(p, i, key, label) {
+  var pr = (p.prices && p.prices[key]) || {};
+  var attr = function (f) {
+    return 'data-pi="' + i + '" data-pk="' + esc(key) + '" data-pf="' + f + '"';
+  };
+
+  var h = '<div class="pblock">';
+  if (label) h += '<div class="pblock-tag">' + esc(label) + '</div>';
+  h += '<div class="price-row">'
+    + '<label class="field"><span class="label">补前价格(元)</span>'
+    + '<input type="number" step="0.01" ' + attr('prePrice') + ' value="' + esc(pr.prePrice || '') + '" placeholder="活动前售价"/></label>'
+    + '<label class="field"><span class="label">报名/最低到手价(元)</span>'
+    + '<input type="number" step="0.01" ' + attr('signupPrice') + ' value="' + esc(pr.signupPrice || '') + '" placeholder="报名承诺价"/></label>'
+    + '<label class="field"><span class="label">实际到手价(元)</span>'
+    + '<input type="number" step="0.01" ' + attr('actualPrice') + ' value="' + esc(pr.actualPrice || '') + '" placeholder="用户实付"/></label>'
+    + '</div>';
+
+  var pre = parseFloat(pr.prePrice), ac = parseFloat(pr.actualPrice);
+  if (isFinite(pre) && isFinite(ac) && pre > 0) {
+    h += '<div class="calc">补贴力度 <b>' + (Math.round((pre - ac) * 100) / 100)
+      + ' 元</b>，补贴率 <b>' + (Math.round(((pre - ac) / pre) * 1000) / 10) + '%</b></div>';
+  }
+  return h + '</div>';
+}
+
 function productCard(p, i) {
   var st = p.status;
   var h = '<div class="pcard' + (st ? ' filled' : '') + '">'
@@ -168,24 +194,24 @@ function productCard(p, i) {
         'data-pi="' + i + '" data-pf="status" data-rerender="products"', true);
 
   if (st === '已提报') {
+    var subs = ACT.subTypes || [];
+    var picked = p.subTypes || [];
     h += '<div class="pnest">';
-    if ((ACT.subTypes || []).length) {
-      h += '<div class="q-title sm">补贴类型（多选）</div>'
-        + checkGroup(p.subTypes, ACT.subTypes, 'data-pi="' + i + '" data-pm="subTypes"');
-    }
-    h += '<div class="price-row">'
-      + '<label class="field"><span class="label">补前价格(元)</span>'
-      + '<input type="number" step="0.01" data-pi="' + i + '" data-pf="prePrice" value="' + esc(p.prePrice) + '" placeholder="活动前售价"/></label>'
-      + '<label class="field"><span class="label">报名/最低到手价(元)</span>'
-      + '<input type="number" step="0.01" data-pi="' + i + '" data-pf="signupPrice" value="' + esc(p.signupPrice) + '" placeholder="报名承诺价"/></label>'
-      + '<label class="field"><span class="label">实际到手价(元)</span>'
-      + '<input type="number" step="0.01" data-pi="' + i + '" data-pf="actualPrice" value="' + esc(p.actualPrice) + '" placeholder="用户实付"/></label>'
-      + '</div>';
 
-    var pre = parseFloat(p.prePrice), ac = parseFloat(p.actualPrice);
-    if (isFinite(pre) && isFinite(ac) && pre > 0) {
-      h += '<div class="calc">补贴力度 <b>' + (Math.round((pre - ac) * 100) / 100)
-        + ' 元</b>，补贴率 <b>' + (Math.round(((pre - ac) / pre) * 1000) / 10) + '%</b></div>';
+    if (subs.length) {
+      h += '<div class="q-title sm">补贴类型（多选，可分别填价格） <span class="req">*</span></div>'
+        + checkGroup(picked, subs, 'data-pi="' + i + '" data-pm="subTypes" data-rerender="products"');
+    }
+
+    if (!subs.length) {
+      h += priceBlock(p, i, SCH.DEFAULT_PRICE_KEY, '');
+    } else if (!picked.length) {
+      h += '<div class="tip-inline">↑ 先选补贴类型，再填对应的价格</div>';
+    } else {
+      // 每个勾选的补贴类型一组独立价格
+      h += picked.map(function (k) {
+        return priceBlock(p, i, k, picked.length > 1 ? k : k);
+      }).join('');
     }
     h += '</div>';
   }
@@ -298,11 +324,16 @@ function renderConfirm() {
           + '<div class="sm-prods">' + groups[k].map(function (p) {
             var extra = '';
             if (p.status === '已提报') {
-              var parts = [];
-              if (p.prePrice) parts.push('补前 ' + p.prePrice);
-              if (p.signupPrice) parts.push('报名 ' + p.signupPrice);
-              if (p.actualPrice) parts.push('到手 ' + p.actualPrice);
-              extra = parts.length ? parts.join(' / ') : '<i>价格未填</i>';
+              var subs = (p.subTypes || []).length ? p.subTypes : [SCH.DEFAULT_PRICE_KEY];
+              extra = subs.map(function (key) {
+                var pr = (p.prices && p.prices[key]) || {};
+                var parts = [];
+                if (pr.prePrice) parts.push('补前 ' + pr.prePrice);
+                if (pr.signupPrice) parts.push('报名 ' + pr.signupPrice);
+                if (pr.actualPrice) parts.push('到手 ' + pr.actualPrice);
+                var tag = key === SCH.DEFAULT_PRICE_KEY ? '' : '<em>' + esc(key) + '</em> ';
+                return tag + (parts.length ? parts.join(' / ') : '<i>价格未填</i>');
+              }).join('<br/>');
             } else if (p.status === '择机报') {
               extra = p.planTime ? '预计 ' + esc(p.planTime) : '<i>时间未填</i>';
             } else if (p.status === '未提报') {
@@ -357,9 +388,29 @@ function applyRerender(kind) {
   saveDraft();
 }
 
+/** 立即切换 chip 的选中样式，避免"点了没反应"的错觉 */
+function syncChip(el) {
+  var chip = el.closest ? el.closest('.chip') : null;
+  if (!chip) return;
+  if (el.type === 'radio') {
+    var group = chip.parentNode ? chip.parentNode.querySelectorAll('.chip') : [];
+    Array.prototype.forEach.call(group, function (c) { c.classList.remove('on'); });
+  }
+  chip.classList.toggle('on', el.checked);
+}
+
+/** 取（或建）某商品某补贴类型的价格组 */
+function priceOf(p, key) {
+  if (!p.prices) p.prices = {};
+  if (!p.prices[key]) p.prices[key] = SCH.newPrice();
+  return p.prices[key];
+}
+
 function handleChange(e) {
   var el = e.target;
   var pi = el.dataset.pi;
+
+  if (el.type === 'radio' || el.type === 'checkbox') syncChip(el);
 
   if (pi !== undefined) {
     var p = state.products[+pi];
@@ -369,6 +420,10 @@ function handleChange(e) {
       var i = arr.indexOf(el.value);
       if (el.checked && i < 0) arr.push(el.value);
       if (!el.checked && i >= 0) arr.splice(i, 1);
+      // 勾选补贴类型时，顺带准备好对应的价格组
+      if (el.dataset.pm === 'subTypes' && el.checked) priceOf(p, el.value);
+    } else if (el.dataset.pk) {
+      priceOf(p, el.dataset.pk)[el.dataset.pf] = el.value;
     } else if (el.dataset.pf) {
       p[el.dataset.pf] = el.value;
     }
@@ -394,16 +449,18 @@ function handleInput(e) {
   if (el.type === 'radio' || el.type === 'checkbox') return;
   var pi = el.dataset.pi;
 
-  if (pi !== undefined && el.dataset.pf) {
+  if (pi !== undefined) {
     var p = state.products[+pi];
-    if (p) p[el.dataset.pf] = el.value;
-    // 价格变动时更新补贴率显示
-    if (el.dataset.pf === 'prePrice' || el.dataset.pf === 'actualPrice') {
-      if (confirmTimer) clearTimeout(confirmTimer);
-      confirmTimer = setTimeout(function () { renderProducts(); renderConfirm(); }, 700);
+    if (!p) return;
+    if (el.dataset.pk) {
+      priceOf(p, el.dataset.pk)[el.dataset.pf] = el.value;
+      // 价格变动 → 稍后刷新补贴率显示（延迟避免打断输入）
       try { localStorage.setItem(DRAFT_KEY, JSON.stringify(state)); } catch (err) {}
+      if (confirmTimer) clearTimeout(confirmTimer);
+      confirmTimer = setTimeout(function () { renderProducts(); renderConfirm(); }, 900);
       return;
     }
+    if (el.dataset.pf) p[el.dataset.pf] = el.value;
   } else if (el.dataset.f) {
     state[el.dataset.f] = el.value;
   } else if (el.dataset.rate) {
@@ -450,7 +507,14 @@ function validate() {
     var named = state.products.filter(function (p) { return p.name; });
     if (!named.length) miss.push('至少填写 1 个商品');
     named.forEach(function (p) {
-      if (!p.status) miss.push('商品「' + p.name.slice(0, 14) + '…」的提报情况');
+      var short = p.name.length > 14 ? p.name.slice(0, 14) + '…' : p.name;
+      if (!p.status) {
+        miss.push('商品「' + short + '」的提报情况');
+        return;
+      }
+      if (p.status === '已提报' && (ACT.subTypes || []).length && !(p.subTypes || []).length) {
+        miss.push('商品「' + short + '」的补贴类型');
+      }
     });
   }
   return miss;

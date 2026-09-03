@@ -62,6 +62,14 @@
     '择机报-预计时间', '未提报原因', '未提报-其他说明', '商品备注',
   ];
 
+  /** 未勾选补贴类型时，价格存放在这个 key 下 */
+  var DEFAULT_PRICE_KEY = '__default__';
+
+  /** 空价格组 */
+  function newPrice() {
+    return { prePrice: '', signupPrice: '', actualPrice: '' };
+  }
+
   /** 一个商品行 */
   function newProduct(p) {
     p = p || {};
@@ -72,9 +80,8 @@
       source: p.source || '自主填写',
       status: '',            // 已提报 / 择机报 / 未提报
       subTypes: [],          // 已提报 → 补贴类型（多选）
-      prePrice: '',
-      signupPrice: '',
-      actualPrice: '',
+      /** 价格按补贴类型分开存：{ '跨店满减（全资）': {prePrice,signupPrice,actualPrice}, ... } */
+      prices: {},
       planTime: '',          // 择机报 → 预计提报时间
       reasons: [],           // 未提报 → 原因
       reasonOther: '',
@@ -134,7 +141,7 @@
     return (products || []).filter(function (p) { return p.status === status; }).length;
   }
 
-  /** 展开成两张表 */
+  /** 展开成两张表。已提报且勾了多个补贴类型 → 每个类型一行（价格分开统计） */
   function flatten(list) {
     var main = [MAIN_HEADER.slice()];
     var detail = [DETAIL_HEADER.slice()];
@@ -156,19 +163,31 @@
       ]);
 
       prods.forEach(function (p, i) {
-        var pre = N(p.prePrice);
-        var actual = N(p.actualPrice);
-        var gap = (typeof pre === 'number' && typeof actual === 'number')
-          ? Math.round((pre - actual) * 100) / 100 : '';
-        var rate = (typeof pre === 'number' && typeof actual === 'number' && pre > 0)
-          ? Math.round(((pre - actual) / pre) * 10000) / 100 : '';
-        detail.push([
-          id, t, act, S(s.brand), i + 1, S(p.name), S(p.source),
-          N(p.cost), N(p.refPrice),
-          S(p.status), A(p.subTypes),
-          pre, N(p.signupPrice), actual, gap, rate,
-          S(p.planTime), A(p.reasons), S(p.reasonOther), S(p.note),
-        ]);
+        // 已提报：按勾选的补贴类型逐行输出；没勾类型则出一行
+        var keys;
+        if (p.status === '已提报') {
+          keys = (p.subTypes || []).length ? p.subTypes.slice() : [DEFAULT_PRICE_KEY];
+        } else {
+          keys = [DEFAULT_PRICE_KEY];
+        }
+
+        keys.forEach(function (key) {
+          var pr = (p.prices && p.prices[key]) || {};
+          var pre = N(pr.prePrice);
+          var actual = N(pr.actualPrice);
+          var gap = (typeof pre === 'number' && typeof actual === 'number')
+            ? Math.round((pre - actual) * 100) / 100 : '';
+          var rate = (typeof pre === 'number' && typeof actual === 'number' && pre > 0)
+            ? Math.round(((pre - actual) / pre) * 10000) / 100 : '';
+
+          detail.push([
+            id, t, act, S(s.brand), i + 1, S(p.name), S(p.source),
+            N(p.cost), N(p.refPrice),
+            S(p.status), key === DEFAULT_PRICE_KEY ? '' : key,
+            pre, N(pr.signupPrice), actual, gap, rate,
+            S(p.planTime), A(p.reasons), S(p.reasonOther), S(p.note),
+          ]);
+        });
       });
     });
 
@@ -205,6 +224,8 @@
     UNQUALIFIED_REASONS: UNQUALIFIED_REASONS,
     MAIN_HEADER: MAIN_HEADER,
     DETAIL_HEADER: DETAIL_HEADER,
+    DEFAULT_PRICE_KEY: DEFAULT_PRICE_KEY,
+    newPrice: newPrice,
     newProduct: newProduct,
     newState: newState,
     flatten: flatten,
