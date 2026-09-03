@@ -62,36 +62,72 @@
 
   var LABEL = 'survey';
 
+  function actName(data) {
+    var SCH = (typeof window !== 'undefined' && window.HBSchema)
+      || (typeof require === 'function' ? null : null);
+    if (SCH && SCH.activityName) return SCH.activityName(data);
+    return data.activityName || data.activityKey || '';
+  }
+
   function issueTitle(data) {
-    return '[问卷] ' + (data.brand || '未填客户') + ' · ' + (data.id || '');
+    return '[' + (actName(data) || '问卷') + '] ' + (data.brand || '未填客户')
+      + ' · ' + (data.qualified || '') + ' · ' + (data.id || '');
   }
 
   /** issue 正文：人可读摘要 + 机器可解析 JSON 代码块 */
   function issueBody(data) {
-    var qa = (data.qualifiedActivities || []);
+    var prods = (data.products || []).filter(function (p) { return p && p.name; });
     var lines = [
+      '**活动**：' + (actName(data) || '-'),
       '**客户名称**：' + (data.brand || '-'),
-      '**有资格报名的活动**：' + (qa.length ? qa.join('、') : '（无）'),
+      '**填写人**：' + (data.filler || '-'),
+      '**是否有资格**：' + (data.qualified || '-'),
       '**提交时间**：' + (data.createdAt || ''),
       '',
     ];
 
-    qa.forEach(function (act) {
-      var b = (data.activities || {})[act] || {};
-      lines.push('### ' + act);
-      lines.push('- 提报进展：' + (b.progress || '-'));
-      lines.push('- 过审问题：' + (b.audit || '-'));
-      if ((b.products || []).length) {
-        lines.push('- 商品报价：');
-        b.products.forEach(function (p) {
-          lines.push('  - ' + (p.name || '') + '｜补前 ' + (p.prePrice || '-')
-            + ' / 报名 ' + (p.signupPrice || '-') + ' / 实际到手 ' + (p.actualPrice || '-'));
-        });
+    if (data.qualified === '没资格') {
+      lines.push('### 无资格情况');
+      lines.push('- 原因：' + ((data.unqualifiedReasons || []).join('、') || '-'));
+      if (data.shopScore) lines.push('- 店铺分：' + data.shopScore);
+      if ((data.rateItems || []).length) {
+        var rv = data.rateValues || {};
+        lines.push('- 三率：' + data.rateItems.map(function (k) {
+          return k + (rv[k] ? ' ' + rv[k] : '');
+        }).join('、'));
       }
+      if (data.unqualifiedOther) lines.push('- 其他：' + data.unqualifiedOther);
+      lines.push('- **是否需要沟通：' + (data.needTalk || '-') + '**');
+      if (data.talkNote) lines.push('- 诉求：' + data.talkNote);
       lines.push('');
-    });
+    }
 
-    if (data.remark) lines.push('**整体备注**：' + data.remark, '');
+    if (prods.length) {
+      var groups = {};
+      prods.forEach(function (p) {
+        (groups[p.status || '未填写'] = groups[p.status || '未填写'] || []).push(p);
+      });
+      Object.keys(groups).forEach(function (k) {
+        lines.push('### ' + k + '（' + groups[k].length + ' 个）');
+        groups[k].forEach(function (p) {
+          var extra = '';
+          if (k === '已提报') {
+            extra = '｜补前 ' + (p.prePrice || '-') + ' / 报名 ' + (p.signupPrice || '-')
+              + ' / 到手 ' + (p.actualPrice || '-');
+            if ((p.subTypes || []).length) extra += '｜' + p.subTypes.join('、');
+          } else if (k === '择机报') {
+            extra = '｜预计 ' + (p.planTime || '-');
+          } else if (k === '未提报') {
+            extra = '｜' + ((p.reasons || []).join('、') || '-');
+            if (p.reasonOther) extra += '（' + p.reasonOther + '）';
+          }
+          lines.push('- ' + p.name + extra);
+        });
+        lines.push('');
+      });
+    }
+
+    if (data.remark) lines.push('**备注**：' + data.remark, '');
 
     lines.push('<!-- 以下为机器读取用，请勿修改 -->');
     lines.push('```json');
