@@ -208,12 +208,54 @@ function productCard(p, i) {
     } else if (!picked.length) {
       h += '<div class="tip-inline">↑ 先选补贴类型，再填对应的价格</div>';
     } else {
-      // 每个勾选的补贴类型一组独立价格
-      h += picked.map(function (k) {
-        return priceBlock(p, i, k, picked.length > 1 ? k : k);
-      }).join('');
+      h += picked.map(function (k) { return priceBlock(p, i, k, k); }).join('');
     }
-    h += '</div>';
+
+    /* ---- 审核进度 ---- */
+    h += '<div class="sub-sec">'
+      + '<div class="q-title sm">审核进度 <span class="req">*</span></div>'
+      + radioGroup('au_' + i, p.audit, SCH.AUDIT_STATUS,
+          'data-pi="' + i + '" data-pf="audit" data-rerender="products"', true);
+
+    if (p.audit === '审核中') {
+      h += '<div class="pnest2"><div class="q-title sm">是否已超过 7 个工作日？</div>'
+        + radioGroup('slow_' + i, p.auditSlow, ['是', '否'],
+            'data-pi="' + i + '" data-pf="auditSlow"', true)
+        + '</div>';
+    }
+
+    if (p.audit === '拒审') {
+      h += '<div class="pnest2"><div class="q-title sm">拒审原因（多选）</div>'
+        + checkGroup(p.rejectReasons, SCH.REJECT_REASONS,
+            'data-pi="' + i + '" data-pm="rejectReasons" data-rerender="products"');
+
+      if ((p.rejectReasons || []).indexOf('高价') >= 0) {
+        h += '<div class="q-title sm" style="margin-top:12px">价格对比（用于申诉，选填）</div>'
+          + '<div class="price-row">'
+          + '<label class="field"><span class="label">本次提报价格(元)</span>'
+          + '<input type="number" step="0.01" data-pi="' + i + '" data-pf="rejectPrice" value="' + esc(p.rejectPrice) + '" placeholder="被拒的报价"/></label>'
+          + '<label class="field"><span class="label">天猫最低价(元)</span>'
+          + '<input type="number" step="0.01" data-pi="' + i + '" data-pf="priceTmall" value="' + esc(p.priceTmall) + '"/></label>'
+          + '<label class="field"><span class="label">抖音最低价(元)</span>'
+          + '<input type="number" step="0.01" data-pi="' + i + '" data-pf="priceDouyin" value="' + esc(p.priceDouyin) + '"/></label>'
+          + '<label class="field"><span class="label">快手最低价(元)</span>'
+          + '<input type="number" step="0.01" data-pi="' + i + '" data-pf="priceKuaishou" value="' + esc(p.priceKuaishou) + '"/></label>'
+          + '</div>';
+      }
+      if ((p.rejectReasons || []).indexOf('其他') >= 0) {
+        h += '<label class="field" style="margin-top:10px"><span class="label">其他拒审原因</span>'
+          + '<input data-pi="' + i + '" data-pf="auditOther" value="' + esc(p.auditOther) + '" placeholder="请具体描述"/></label>';
+      }
+      h += '</div>';
+    }
+
+    if (p.audit === '其他') {
+      h += '<div class="pnest2"><label class="field"><span class="label">具体情况说明</span>'
+        + '<input data-pi="' + i + '" data-pf="auditOther" value="' + esc(p.auditOther) + '" placeholder="如：部分规格过审、需要补资料等"/></label></div>';
+    }
+
+    h += '</div>';  // sub-sec
+    h += '</div>';  // pnest
   }
 
   if (st === '择机报') {
@@ -334,6 +376,10 @@ function renderConfirm() {
                 var tag = key === SCH.DEFAULT_PRICE_KEY ? '' : '<em>' + esc(key) + '</em> ';
                 return tag + (parts.length ? parts.join(' / ') : '<i>价格未填</i>');
               }).join('<br/>');
+              extra += '<br/><span class="au">审核：' + esc(p.audit || '未填')
+                + (p.audit === '审核中' && p.auditSlow ? '（超7个工作日：' + esc(p.auditSlow) + '）' : '')
+                + (p.audit === '拒审' && (p.rejectReasons || []).length ? ' — ' + esc(p.rejectReasons.join('、')) : '')
+                + '</span>';
             } else if (p.status === '择机报') {
               extra = p.planTime ? '预计 ' + esc(p.planTime) : '<i>时间未填</i>';
             } else if (p.status === '未提报') {
@@ -492,7 +538,6 @@ function handleClick(e) {
 function validate() {
   var miss = [];
   if (!state.brand.trim()) miss.push('客户名称');
-  if (!state.filler.trim()) miss.push('填写人');
   if (!state.qualified) miss.push('是否有资格报名');
 
   if (state.qualified === '没资格') {
@@ -512,8 +557,14 @@ function validate() {
         miss.push('商品「' + short + '」的提报情况');
         return;
       }
-      if (p.status === '已提报' && (ACT.subTypes || []).length && !(p.subTypes || []).length) {
-        miss.push('商品「' + short + '」的补贴类型');
+      if (p.status === '已提报') {
+        if ((ACT.subTypes || []).length && !(p.subTypes || []).length) {
+          miss.push('商品「' + short + '」的补贴类型');
+        }
+        if (!p.audit) miss.push('商品「' + short + '」的审核进度');
+        if (p.audit === '拒审' && !(p.rejectReasons || []).length) {
+          miss.push('商品「' + short + '」的拒审原因');
+        }
       }
     });
   }
@@ -599,9 +650,7 @@ function showDone(data, offline) {
   if (other) btns += '<a class="btn primary" href="' + other.page + '">去填「' + esc(other.name) + '」</a>';
   $('#doneBtns').innerHTML = btns;
   $('#btnAgain').addEventListener('click', function () {
-    var keep = state.filler;
     state = SCH.newState(ACT_KEY);
-    state.filler = keep;
     $('#doneMask').classList.remove('show');
     $('#brand').value = '';
     $('#remark').value = '';
@@ -637,7 +686,6 @@ function init() {
 
   loadDraft();
   $('#brand').value = state.brand;
-  $('#filler').value = state.filler;
   $('#remark').value = state.remark;
   renderBrandHint();
   renderAll();
@@ -656,7 +704,6 @@ function init() {
     saveDraft();
   });
 
-  $('#filler').addEventListener('input', function (e) { state.filler = e.target.value; saveDraft(); });
   $('#remark').addEventListener('input', function (e) { state.remark = e.target.value; saveDraft(); });
 
   var form = $('#form');
@@ -668,9 +715,7 @@ function init() {
   $('#btnClear').addEventListener('click', function () {
     if (!confirm('确定清空当前填写内容？')) return;
     try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
-    var keep = state.filler;
     state = SCH.newState(ACT_KEY);
-    state.filler = keep;
     $('#brand').value = '';
     $('#remark').value = '';
     renderBrandHint();

@@ -80,7 +80,6 @@
     var lines = [
       '**活动**：' + (actName(data) || '-'),
       '**客户名称**：' + (data.brand || '-'),
-      '**填写人**：' + (data.filler || '-'),
       '**是否有资格**：' + (data.qualified || '-'),
       '**提交时间**：' + (data.createdAt || ''),
       '',
@@ -115,6 +114,13 @@
             extra = '｜补前 ' + (p.prePrice || '-') + ' / 报名 ' + (p.signupPrice || '-')
               + ' / 到手 ' + (p.actualPrice || '-');
             if ((p.subTypes || []).length) extra += '｜' + p.subTypes.join('、');
+            if (p.audit) {
+              extra += '｜审核：' + p.audit;
+              if (p.audit === '审核中' && p.auditSlow) extra += '(超7工作日:' + p.auditSlow + ')';
+              if (p.audit === '拒审' && (p.rejectReasons || []).length) {
+                extra += '(' + p.rejectReasons.join('、') + ')';
+              }
+            }
           } else if (k === '择机报') {
             extra = '｜预计 ' + (p.planTime || '-');
           } else if (k === '未提报') {

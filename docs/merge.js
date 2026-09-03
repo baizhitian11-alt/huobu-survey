@@ -153,6 +153,7 @@ function renderStats() {
   var list = filtered();
   var brands = {}, qualified = 0, unqualified = 0, needTalk = 0;
   var st = { '已提报': 0, '择机报': 0, '未提报': 0 };
+  var au = { '已过审': 0, '审核中': 0, '拒审': 0 };
   var products = 0;
 
   list.forEach(function (s) {
@@ -166,6 +167,7 @@ function renderStats() {
       if (!p.name) return;
       products++;
       if (st[p.status] !== undefined) st[p.status]++;
+      if (p.status === '已提报' && au[p.audit] !== undefined) au[p.audit]++;
     });
   });
 
@@ -183,6 +185,9 @@ function renderStats() {
     cell('已提报', st['已提报'], 'ok'),
     cell('择机报', st['择机报']),
     cell('未提报', st['未提报']),
+    cell('已过审', au['已过审'], 'ok'),
+    cell('审核中', au['审核中']),
+    cell('拒审', au['拒审'], au['拒审'] ? 'warn' : ''),
   ].join('');
 }
 
@@ -193,10 +198,15 @@ function renderTable() {
   list.slice().reverse().forEach(function (s) {
     var prods = (s.products || []).filter(function (p) { return p.name; });
     var cnt = function (k) { return prods.filter(function (p) { return p.status === k; }).length; };
+    var au = function (k) {
+      return prods.filter(function (p) { return p.status === '已提报' && p.audit === k; }).length;
+    };
     var detail = s.qualified === '有资格'
       ? '<span class="badge ok">已提报 ' + cnt('已提报') + '</span> '
         + '<span class="badge">择机 ' + cnt('择机报') + '</span> '
         + '<span class="badge">未报 ' + cnt('未提报') + '</span>'
+        + (au('拒审') ? ' <span class="badge warn">拒审 ' + au('拒审') + '</span>' : '')
+        + (au('审核中') ? ' <span class="badge">审核中 ' + au('审核中') + '</span>' : '')
       : '<span class="badge">' + esc((s.unqualifiedReasons || []).join('、') || '-') + '</span>'
         + (s.needTalk === '需要沟通' ? ' <span class="badge warn">需沟通</span>' : '');
 
@@ -204,7 +214,6 @@ function renderTable() {
       + '<td>' + esc(SCH.fmtTime(s.createdAt).slice(5, 16)) + '</td>'
       + '<td><span class="badge">' + esc(SCH.activityName(s)) + '</span></td>'
       + '<td><b>' + esc(s.brand) + '</b></td>'
-      + '<td>' + esc(s.filler || '-') + '</td>'
       + '<td>' + esc(s.qualified || '-') + '</td>'
       + '<td>' + detail + '</td>'
       + '<td>' + (prods.length || '-') + '</td>'
@@ -217,7 +226,7 @@ function renderTable() {
   });
 
   $('#list tbody').innerHTML = rows.join('')
-    || '<tr><td colspan="9" style="color:#7a8399">暂无数据。点「刷新数据」从远端拉取，或拖入回执文件。</td></tr>';
+    || '<tr><td colspan="8" style="color:#7a8399">暂无数据。点「刷新数据」从远端拉取，或拖入回执文件。</td></tr>';
 }
 
 function renderPreview() {

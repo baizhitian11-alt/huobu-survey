@@ -44,10 +44,15 @@
   var RATE_ITEMS = ['近14天差评率', '近14天品退率', '近14天纠纷率'];
   var UNQUALIFIED_REASONS = ['店铺分不达标', '三率不达标', '类目/资质不符', '不清楚原因', '其他'];
 
+  /* 已提报 → 审核进度 */
+  var AUDIT_STATUS = ['已过审', '审核中', '拒审', '其他'];
+  var REJECT_REASONS = ['商品质量', '高价', '资质不符', '其他'];
+
   var MAIN_HEADER = [
-    '提交ID', '提交时间', '活动', '客户名称', '填写人',
+    '提交ID', '提交时间', '活动', '客户名称',
     '是否有资格', '商品数',
     '已提报数', '择机报数', '未提报数',
+    '过审数', '审核中数', '拒审数',
     '无资格-原因', '无资格-店铺分', '无资格-三率不达标项', '无资格-三率数值',
     '无资格-其他说明', '是否需要沟通', '沟通诉求',
     '备注',
@@ -59,6 +64,8 @@
     '提报情况', '补贴类型',
     '补前价格(元)', '活动报名/最低到手价(元)', '实际到手价(元)',
     '补贴力度(补前-实际到手)', '补贴率(%)',
+    '审核进度', '是否超7个工作日', '拒审原因', '拒审-提报价格',
+    '天猫最低价', '抖音最低价', '快手最低价', '审核-其他说明',
     '择机报-预计时间', '未提报原因', '未提报-其他说明', '商品备注',
   ];
 
@@ -82,6 +89,15 @@
       subTypes: [],          // 已提报 → 补贴类型（多选）
       /** 价格按补贴类型分开存：{ '跨店满减（全资）': {prePrice,signupPrice,actualPrice}, ... } */
       prices: {},
+      // 已提报 → 审核进度
+      audit: '',             // 已过审 / 审核中 / 拒审 / 其他
+      auditSlow: '',         // 审核中 → 是否超 7 个工作日
+      rejectReasons: [],     // 拒审 → 原因
+      rejectPrice: '',       // 拒审·高价 → 本次提报价格
+      priceTmall: '',
+      priceDouyin: '',
+      priceKuaishou: '',
+      auditOther: '',        // 其他情况说明
       planTime: '',          // 择机报 → 预计提报时间
       reasons: [],           // 未提报 → 原因
       reasonOther: '',
@@ -94,7 +110,6 @@
     return {
       activityKey: activityKey || ACTIVITY_DEFS[0].key,
       brand: '',
-      filler: '',
       qualified: '',          // 有资格 / 没资格
       // 没资格分支
       unqualifiedReasons: [],
@@ -141,6 +156,12 @@
     return (products || []).filter(function (p) { return p.status === status; }).length;
   }
 
+  function countAudit(products, audit) {
+    return (products || []).filter(function (p) {
+      return p.status === '已提报' && p.audit === audit;
+    }).length;
+  }
+
   /** 展开成两张表。已提报且勾了多个补贴类型 → 每个类型一行（价格分开统计） */
   function flatten(list) {
     var main = [MAIN_HEADER.slice()];
@@ -154,9 +175,10 @@
       var prods = (s.products || []).filter(function (p) { return p && p.name; });
 
       main.push([
-        id, t, act, S(s.brand), S(s.filler),
+        id, t, act, S(s.brand),
         S(s.qualified), prods.length || '',
         countBy(prods, '已提报') || '', countBy(prods, '择机报') || '', countBy(prods, '未提报') || '',
+        countAudit(prods, '已过审') || '', countAudit(prods, '审核中') || '', countAudit(prods, '拒审') || '',
         A(s.unqualifiedReasons), S(s.shopScore), A(s.rateItems), rateText(s),
         S(s.unqualifiedOther), S(s.needTalk), S(s.talkNote),
         S(s.remark),
@@ -185,6 +207,8 @@
             N(p.cost), N(p.refPrice),
             S(p.status), key === DEFAULT_PRICE_KEY ? '' : key,
             pre, N(pr.signupPrice), actual, gap, rate,
+            S(p.audit), S(p.auditSlow), A(p.rejectReasons), N(p.rejectPrice),
+            N(p.priceTmall), N(p.priceDouyin), N(p.priceKuaishou), S(p.auditOther),
             S(p.planTime), A(p.reasons), S(p.reasonOther), S(p.note),
           ]);
         });
@@ -206,7 +230,8 @@
       },
       {
         name: '商品提报明细',
-        cols: [12, 18, 12, 14, 6, 50, 10, 12, 15, 10, 22, 12, 20, 14, 18, 11, 16, 24, 18, 20]
+        cols: [12, 18, 12, 14, 6, 50, 10, 12, 15, 10, 22, 12, 20, 14, 18, 11,
+               12, 16, 20, 15, 13, 13, 13, 22, 16, 24, 18, 20]
           .map(function (w) { return { w: w }; }),
         rows: f.detail,
       },
@@ -222,6 +247,8 @@
     NEED_TALK: NEED_TALK,
     RATE_ITEMS: RATE_ITEMS,
     UNQUALIFIED_REASONS: UNQUALIFIED_REASONS,
+    AUDIT_STATUS: AUDIT_STATUS,
+    REJECT_REASONS: REJECT_REASONS,
     MAIN_HEADER: MAIN_HEADER,
     DETAIL_HEADER: DETAIL_HEADER,
     DEFAULT_PRICE_KEY: DEFAULT_PRICE_KEY,
