@@ -54,6 +54,9 @@
       'Accept': 'application/vnd.github+json',
       'X-GitHub-Api-Version': '2022-11-28',
       'Content-Type': 'application/json; charset=utf-8',
+      // GitHub 的 issues 列表有 CDN 缓存，加这个避免读到旧数据
+      'Cache-Control': 'no-cache',
+      'If-None-Match': '',
     };
     var t = withAuth ? token() : '';
     if (t) h.Authorization = 'Bearer ' + t;
@@ -181,21 +184,29 @@
     }
   }
 
-  /** 拉取全部问卷（自动翻页）。只取 open 的 issue —— 关闭即视为删除 */
+  /** 拉取全部问卷（自动翻页）。只取 open 的 issue —— 关闭即视为删除
+   *  注意：不用 labels 参数过滤（GitHub 的 label 索引有几秒延迟，
+   *  会导致刚提交的问卷读不到），改为拉全部后在客户端按 label 过滤。
+   */
   function list(onProgress) {
     if (!readable()) return Promise.reject(new Error('未配置 github.repo'));
     var out = [];
     var page = 1;
 
     function next() {
-      var url = API + '/repos/' + GH.repo + '/issues?state=open&per_page=100&labels='
-        + encodeURIComponent(LABEL) + '&page=' + page;
-      return fetch(url, { headers: headers(true) }).then(function (r) {
+      var url = API + '/repos/' + GH.repo + '/issues?state=open&per_page=100&page=' + page
+        + '&_=' + Date.now();   // 打破 CDN 缓存
+      return fetch(url, { headers: headers(true), cache: 'no-store' }).then(function (r) {
         return r.json().then(function (arr) {
           if (!r.ok) throw new Error((arr && arr.message) || ('HTTP ' + r.status));
           if (!Array.isArray(arr)) throw new Error('返回格式异常');
           arr.forEach(function (it) {
             if (it.pull_request) return;
+            // 客户端过滤：只要带 survey 标签的
+            var labels = (it.labels || []).map(function (l) {
+              return typeof l === 'string' ? l : l.name;
+            });
+            if (labels.indexOf(LABEL) < 0) return;
             var rec = parseIssue(it);
             if (rec) out.push(rec);
           });

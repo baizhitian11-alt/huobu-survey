@@ -52,28 +52,36 @@ function addRecords(arr) {
   return { added: added, dup: dup };
 }
 
-/* ---------- 远端拉取 ---------- */
-function pullRemote(silent) {
+/* ---------- 远端拉取 ----------
+ * GitHub 的 issues 列表接口有约 3 秒最终一致性延迟，刚提交的问卷可能读不到。
+ * 因此手动刷新时会在 3.5 秒后再静默拉一次兜底。
+ */
+function fetchRemote() {
   var api = (CFG.apiBase || '').replace(/\/+$/, '');
-  var btn = $('#btnPull');
-  var task;
-
   if (api) {
     var key = localStorage.getItem('huobu_admin_key') || '';
-    if (!key && !silent) {
+    if (!key) {
       key = prompt('请输入管理密钥（后端 ADMIN_KEY）', '') || '';
       if (key) localStorage.setItem('huobu_admin_key', key);
     }
-    if (!key) return;
-    task = fetch(api + '/api/admin/list?key=' + encodeURIComponent(key))
+    if (!key) return Promise.reject(new Error('未填管理密钥'));
+    return fetch(api + '/api/admin/list?key=' + encodeURIComponent(key))
       .then(function (r) { return r.json(); })
       .then(function (j) {
         if (!j.ok) throw new Error(j.msg || '加载失败');
         return j.list || [];
       });
-  } else if (GHUB && GHUB.readable()) {
-    task = GHUB.list(function (n) { $('#status').textContent = '读取中… ' + n + ' 份'; });
-  } else {
+  }
+  if (GHUB && GHUB.readable()) {
+    return GHUB.list(function (n) { $('#status').textContent = '读取中… ' + n + ' 份'; });
+  }
+  return Promise.reject(new Error('未配置数据源'));
+}
+
+function pullRemote(silent) {
+  var btn = $('#btnPull');
+  var hasSource = !!((CFG.apiBase || '').trim() || (GHUB && GHUB.readable()));
+  if (!hasSource) {
     if (!silent) alert('未配置数据源，请在 docs/config.js 里填 github.repo 或 apiBase');
     return;
   }
@@ -82,11 +90,23 @@ function pullRemote(silent) {
   btn.textContent = '拉取中…';
   $('#status').textContent = '正在读取远端数据…';
 
-  task.then(function (arr) {
+  fetchRemote().then(function (arr) {
     var r = addRecords(arr);
     $('#status').textContent = '远端 ' + arr.length + ' 份'
       + (r.added ? '，新增 ' + r.added : '，无新增')
-      + ' · 当前合计 ' + LIST.length + ' 份 · ' + new Date().toLocaleTimeString('zh-CN');
+      + ' · 合计 ' + LIST.length + ' 份 · ' + new Date().toLocaleTimeString('zh-CN');
+
+    // 兜底：3.5 秒后再拉一次，捞刚提交还没被索引的
+    if (!silent) {
+      setTimeout(function () {
+        fetchRemote().then(function (arr2) {
+          var r2 = addRecords(arr2);
+          if (r2.added) {
+            $('#status').textContent = '又同步到 ' + r2.added + ' 份新提交 · 合计 ' + LIST.length + ' 份';
+          }
+        }).catch(function () {});
+      }, 3500);
+    }
   }).catch(function (e) {
     $('#status').textContent = '拉取失败：' + e.message;
     if (!silent) alert('拉取失败：' + e.message);
