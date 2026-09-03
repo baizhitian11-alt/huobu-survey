@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>金秋满减 · 报名情况摸排</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="page">
+  <header class="hero act-hero">
+    <div class="act-nav" id="actNav"></div>
+    <h1><span id="actName">金秋满减</span> · 报名情况摸排</h1>
+    <p class="hero-desc" id="actDesc"></p>
+  </header>
+
+  <main id="form">
+    <!-- Step 1 客户 -->
+    <section class="card">
+      <h2><span class="idx">1</span>选择客户</h2>
+      <div class="grid2">
+        <label class="field">
+          <span class="label">客户名称 <span class="req">*</span></span>
+          <input id="brand" list="brandList" placeholder="输入客户简称，如：百雀羚" autocomplete="off" />
+          <datalist id="brandList"></datalist>
+          <span class="hint" id="brandHint"></span>
+        </label>
+        <label class="field">
+          <span class="label">填写人 <span class="req">*</span></span>
+          <input id="filler" placeholder="您的姓名 / 花名" autocomplete="off" />
+        </label>
+      </div>
+    </section>
+
+    <!-- Step 2 资格 -->
+    <section class="card">
+      <h2><span class="idx">2</span>是否有资格报名本次活动 <span class="req">*</span></h2>
+      <div id="qualifyBox"></div>
+    </section>
+
+    <!-- Step 3 商品 -->
+    <section class="card" id="productCard" style="display:none">
+      <h2><span class="idx">3</span>按商品填写提报情况</h2>
+      <p class="sub">系统已带出该客户的主推商品，请逐个选择「已提报 / 择机报 / 未提报」。可增删商品。</p>
+      <div id="productBox"></div>
+    </section>
+
+    <section class="card">
+      <h2><span class="idx">＋</span>其他补充</h2>
+      <label class="field">
+        <span class="label">备注 / 想反馈的问题</span>
+        <textarea id="remark" rows="3" placeholder="选填"></textarea>
+      </label>
+    </section>
+
+    <section class="card">
+      <h2><span class="idx">✓</span>提交前确认</h2>
+      <div id="confirm"></div>
+    </section>
+  </main>
+
+  <footer class="actions">
+    <div class="save-tip">草稿自动保存 · <span id="modeTip"></span></div>
+    <div class="btns">
+      <button class="btn ghost" id="btnClear">清空</button>
+      <button class="btn primary" id="btnSubmit">提交问卷</button>
+    </div>
+  </footer>
+</div>
+
+<div class="mask" id="doneMask">
+  <div class="done">
+    <div class="done-icon">✓</div>
+    <h3>提交成功，感谢配合！</h3>
+    <p id="doneId"></p>
+    <div class="btns" id="doneBtns"></div>
+  </div>
+</div>
+
+<script>window.HB_ACTIVITY = 'manjian';</script>
+<script src="config.js"></script>
+<script src="products-data.js"></script>
+<script src="schema.js"></script>
+<script src="gh.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

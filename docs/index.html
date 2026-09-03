@@ -2,78 +2,52 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>金秋大促 · 客户活动报名与货补摸排</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>金秋大促 · 活动报名摸排</title>
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-<div class="page">
+<div class="page narrow">
   <header class="hero">
-    <div class="hero-tag" id="heroTag">视频号电商 · 品牌客户摸排</div>
-    <h1 id="heroTitle">金秋大促 · 客户活动报名与货补摸排</h1>
-    <p class="hero-desc">
-      预计 3-5 分钟填完。先选<strong>有资格报名的活动</strong>，勾选后会展开对应的填写项；
-      填了客户名称后，商品会自动带出近期<strong>消耗 Top5</strong>，您只需补充价格。带 <span class="req">*</span> 为必填。
-    </p>
+    <div class="hero-tag">视频号电商 · 品牌客户摸排</div>
+    <h1>金秋大促 · 活动报名摸排</h1>
+    <p class="hero-desc">请按活动分别填写。每个活动一个独立入口，互不影响，填完一个可以接着填另一个。</p>
   </header>
 
-  <main id="form">
-    <section class="card">
-      <h2><span class="idx">1</span>客户名称 <span class="req">*</span></h2>
-      <label class="field" style="max-width:520px">
-        <input id="brand" list="brandList" placeholder="输入客户 / 品牌简称，如：百雀羚" autocomplete="off" />
-        <datalist id="brandList"></datalist>
-        <span class="hint" id="brandHint"></span>
-      </label>
-    </section>
+  <div class="entry-grid" id="entryGrid"></div>
 
-    <section class="card">
-      <h2><span class="idx">2</span>有资格报名的活动 <span class="req">*</span></h2>
-      <p class="sub">可多选。勾选后下方会按活动分别展开提报进展、过审情况与玩法问题。</p>
-      <div id="q1Box"></div>
-    </section>
-
-    <div id="activityBlocks"></div>
-
-    <section class="card">
-      <h2><span class="idx">＋</span>其他补充</h2>
-      <label class="field">
-        <span class="label">整体备注 / 想反馈的问题</span>
-        <textarea id="remark" rows="3" placeholder="选填"></textarea>
-      </label>
-    </section>
-
-    <section class="card">
-      <h2><span class="idx">✓</span>提交前确认</h2>
-      <p class="sub">核对一下有没有填错、漏填，确认无误再提交。</p>
-      <div id="preview"></div>
-    </section>
-  </main>
-
-  <footer class="actions">
-    <div class="save-tip">草稿自动保存在本机浏览器 · <span id="modeTip"></span></div>
-    <div class="btns">
-      <button class="btn ghost" id="btnClear">清空重填</button>
-      <button class="btn primary" id="btnSubmit">提交问卷</button>
-    </div>
-  </footer>
-</div>
-
-<div class="mask" id="doneMask">
-  <div class="done">
-    <div class="done-icon">✓</div>
-    <h3>提交成功，感谢配合！</h3>
-    <p id="doneId"></p>
-    <div class="btns" id="doneBtns">
-      <button class="btn primary" id="btnAgain">再填一份</button>
-    </div>
-  </div>
+  <section class="card" style="margin-top:18px">
+    <h2><span class="idx">?</span>填写说明</h2>
+    <ol class="guide">
+      <li>选择客户 —— 输入客户简称，系统自动带出该客户的主推商品</li>
+      <li>确认是否有资格报名<br/>
+        <span class="guide-sub">· 没资格 → 填写店铺分等原因，并告诉我们是否需要协助沟通<br/>
+        · 有资格 → 进入第 3 步</span></li>
+      <li>按商品逐个选择提报情况：<b>已提报</b>（填价格）/ <b>择机报</b>（填预计时间）/ <b>未提报</b>（选原因）</li>
+      <li>确认无误后提交</li>
+    </ol>
+    <p class="sub" style="margin:14px 0 0">填写过程会自动保存草稿，中途关掉页面再回来不会丢。</p>
+  </section>
 </div>
 
 <script src="config.js"></script>
 <script src="products-data.js"></script>
 <script src="schema.js"></script>
-<script src="gh.js"></script>
-<script src="app.js"></script>
+<script>
+(function () {
+  var SCH = window.HBSchema;
+  var esc = function (s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c];
+    });
+  };
+  document.getElementById('entryGrid').innerHTML = SCH.ACTIVITY_DEFS.map(function (a) {
+    return '<a class="entry-card" href="' + a.page + '" style="--act:' + a.color + '">'
+      + '<div class="entry-name">' + esc(a.name) + '</div>'
+      + '<div class="entry-desc">' + esc(a.desc) + '</div>'
+      + '<div class="entry-go">开始填写 →</div></a>';
+  }).join('');
+})();
+</script>
 </body>
 </html>
