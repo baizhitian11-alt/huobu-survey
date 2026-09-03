@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>货补摸排 · 汇总导出（运营用）</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="page">
+  <header class="hero" style="padding:22px 24px">
+    <div class="hero-tag">运营侧工具 · 全在本机浏览器处理</div>
+    <h1 style="font-size:21px;margin-bottom:4px">货补摸排 · 汇总导出</h1>
+    <p class="hero-desc">
+      两种数据来源都支持，可混用（按问卷编号自动去重）：<br/>
+      ① 客户在线提交的 → 点「从远端拉取」；② 客户回传的 <code>.hbjson</code> 文件 → 拖进下方区域。
+      <span id="repoTip" style="display:block;margin-top:6px"></span>
+    </p>
+  </header>
+
+  <section class="card">
+    <div class="admin-bar">
+      <button class="btn primary" id="btnPull">从远端拉取</button>
+      <button class="btn ghost" id="btnExport">导出汇总 Excel</button>
+      <button class="btn ghost" id="btnExportJson">导出 JSON 备份</button>
+      <button class="btn ghost" id="btnClear">清空列表</button>
+      <span class="hint" id="status">尚无数据</span>
+    </div>
+
+    <div class="drop" id="drop" style="margin-top:6px">
+      <div class="drop-icon">⬇</div>
+      <div><b>把客户回传的回执文件拖到这里</b>，或 <button class="link-btn" id="btnPick">点击选择文件</button></div>
+      <div class="hint" style="margin-top:6px">支持 .hbjson / .json，可多选</div>
+      <input type="file" id="file" multiple accept=".hbjson,.json,application/json" style="display:none" />
+    </div>
+
+    <div class="stat-grid" id="stats" style="margin-top:16px"></div>
+  </section>
+
+  <section class="card">
+    <h2><span class="idx">⊞</span>Excel 数据预览 <span class="tag">与导出文件完全一致</span></h2>
+    <p class="sub">这里显示的就是导出 Excel 里的内容，两个 Sheet 可切换，不下载也能直接看和核对。</p>
+    <div id="preview"></div>
+  </section>
+
+  <section class="card">
+    <h2><span class="idx">≡</span>已汇总问卷</h2>
+    <div class="tbl-wrap" style="margin-top:12px">
+      <table class="tbl" id="list">
+        <thead><tr>
+          <th>提交时间</th><th>客户名称</th><th>有资格活动</th><th>活动</th>
+          <th>提报进展</th><th>过审问题</th><th>商品数</th><th>编号/Issue</th><th></th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<script src="config.js"></script>
+<script src="schema.js"></script>
+<script src="xlsx.js"></script>
+<script src="preview.js"></script>
+<script src="gh.js"></script>
+<script src="merge.js"></script>
+</body>
+</html>
