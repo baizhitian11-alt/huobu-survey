@@ -87,8 +87,9 @@ git -c user.email="${GIT_EMAIL:-survey@local}" -c user.name="${GIT_NAME:-$OWNER}
   commit -q -m "publish: 货补摸排问卷 $(date '+%Y-%m-%d %H:%M')" || echo "· 没有新变更"
 
 echo "· 推送到 $SLUG …"
-# token 只作为一次性 header 传入，不写进 .git/config
-git -c http.extraheader="AUTHORIZATION: Bearer $TOKEN" push -q -u origin main --force
+# token 只出现在这一次命令的 URL 里，不写进 .git/config
+git push -q --force "https://x-access-token:$TOKEN@github.com/$SLUG.git" main
+git branch --set-upstream-to=origin/main main 2>/dev/null || true
 echo "  ✓ 已推送"
 
 # ---------- 4. 开启 Pages ----------
