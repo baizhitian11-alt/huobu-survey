@@ -49,15 +49,21 @@
     return !!GH.repo;
   }
 
-  function headers(withAuth) {
+  /**
+   * 请求头。
+   * 注意：浏览器端只能带 GitHub CORS 白名单里的 header
+   * （Accept / Authorization / Content-Type / X-GitHub-Api-Version）。
+   * 带 Cache-Control、If-None-Match 之类会让 preflight 被拒，整个请求失败。
+   * 防缓存改用 URL 上的时间戳参数。
+   * @param {boolean} withAuth 是否带 token
+   * @param {boolean} isWrite  写请求才需要 Content-Type
+   */
+  function headers(withAuth, isWrite) {
     var h = {
       'Accept': 'application/vnd.github+json',
       'X-GitHub-Api-Version': '2022-11-28',
-      'Content-Type': 'application/json; charset=utf-8',
-      // GitHub 的 issues 列表有 CDN 缓存，加这个避免读到旧数据
-      'Cache-Control': 'no-cache',
-      'If-None-Match': '',
     };
+    if (isWrite) h['Content-Type'] = 'application/json; charset=utf-8';
     var t = withAuth ? token() : '';
     if (t) h.Authorization = 'Bearer ' + t;
     return h;
@@ -149,7 +155,7 @@
     if (!enabled()) return Promise.reject(new Error('GitHub 后端未配置'));
     return fetch(API + '/repos/' + GH.repo + '/issues', {
       method: 'POST',
-      headers: headers(true),
+      headers: headers(true, true),
       body: JSON.stringify({
         title: issueTitle(data),
         body: issueBody(data),
@@ -194,8 +200,17 @@
 
     function next() {
       var url = API + '/repos/' + GH.repo + '/issues?state=open&per_page=100&page=' + page
-        + '&_=' + Date.now();   // 打破 CDN 缓存
-      return fetch(url, { headers: headers(true), cache: 'no-store' }).then(function (r) {
+        + '&_=' + Date.now();   // 打破 CDN 缓存（不能用 Cache-Control 头，会被 CORS 拦）
+      return fetch(url, { headers: headers(true), cache: 'no-store' }).catch(function (e) {
+        // 网络层失败（断网 / 被拦 / CORS）
+        throw new Error('无法连接 GitHub（' + (e && e.message ? e.message : '网络错误')
+          + '）。请检查网络是否能访问 api.github.com');
+      }).then(function (r) {
+        if (r.status === 401) throw new Error('token 无效或已过期，请重新生成并执行 set_token.py');
+        if (r.status === 403) {
+          throw new Error('访问被拒绝（403）：token 权限不足，或触发了 API 限流（每小时 5000 次），稍后再试');
+        }
+        if (r.status === 404) throw new Error('仓库不存在或无权访问：' + GH.repo);
         return r.json().then(function (arr) {
           if (!r.ok) throw new Error((arr && arr.message) || ('HTTP ' + r.status));
           if (!Array.isArray(arr)) throw new Error('返回格式异常');
@@ -226,7 +241,7 @@
     if (!enabled()) return Promise.reject(new Error('需要 token 才能关闭 issue'));
     return fetch(API + '/repos/' + GH.repo + '/issues/' + issueNumber, {
       method: 'PATCH',
-      headers: headers(true),
+      headers: headers(true, true),
       body: JSON.stringify({ state: 'closed' }),
     }).then(function (r) {
       if (!r.ok) throw new Error('HTTP ' + r.status);
