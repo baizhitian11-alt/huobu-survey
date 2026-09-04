@@ -123,7 +123,7 @@
             extra = '｜预计 ' + (p.planTime || '-');
           } else if (k === '未提报') {
             extra = '｜' + ((p.reasons || []).join('、') || '-');
-            if (p.smallLinkReason) extra += '｜小链接原因: ' + p.smallLinkReason;
+            if (p.smallLinkReason) extra += '｜大链接不能报原因: ' + p.smallLinkReason;
             if (p.reasonOther) extra += '（' + p.reasonOther + '）';
           } else if (k === '无提报资格') {
             extra = '｜' + ((p.unqualifiedReasons || []).join('、') || '-');

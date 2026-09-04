@@ -246,12 +246,12 @@ function productCard(p, i) {
           'data-pi="' + i + '" data-pm="reasons" data-rerender="products"');
 
     var rs = p.reasons || [];
-    if (rs.indexOf('入选链接非大链接') >= 0) {
+    if (rs.indexOf('入选链接非主推大链接') >= 0) {
+      var d = SCH.NO_REPORT_NEED_DETAIL['入选链接非主推大链接'];
       h += '<label class="field" style="margin-top:12px">'
-        + '<span class="label">小链接不能提报的原因 <span class="req">*</span></span>'
+        + '<span class="label">' + esc(d[0]) + ' <span class="req">*</span></span>'
         + '<textarea rows="2" data-pi="' + i + '" data-pf="smallLinkReason" '
-        + 'placeholder="例如：小链接销量不足无法入池 / 小链接价格无法破价 / 主推大链接不在活动池内等">'
-        + esc(p.smallLinkReason) + '</textarea></label>';
+        + 'placeholder="' + esc(d[1]) + '">' + esc(p.smallLinkReason) + '</textarea></label>';
     }
     if (rs.indexOf('其他') >= 0) {
       h += '<label class="field" style="margin-top:10px"><span class="label">其他原因</span>'
@@ -401,8 +401,8 @@ function renderConfirm() {
 
         } else if (p.status === '未提报') {
           extra = esc((p.reasons || []).join('、')) || '<i>原因未填</i>';
-          if ((p.reasons || []).indexOf('入选链接非大链接') >= 0) {
-            extra += '<br/><span class="au">小链接原因：'
+          if ((p.reasons || []).indexOf('入选链接非主推大链接') >= 0) {
+            extra += '<br/><span class="au">原因：'
               + (p.smallLinkReason ? esc(p.smallLinkReason) : '<i>未填</i>') + '</span>';
           }
 
@@ -604,9 +604,9 @@ function validate() {
     if (p.status === '未提报') {
       if (!(p.reasons || []).length) {
         miss.push('商品「' + short + '」的不提报原因');
-      } else if ((p.reasons || []).indexOf('入选链接非大链接') >= 0
+      } else if ((p.reasons || []).indexOf('入选链接非主推大链接') >= 0
                  && !String(p.smallLinkReason || '').trim()) {
-        miss.push('商品「' + short + '」小链接不能提报的原因');
+        miss.push('商品「' + short + '」主推大链接不能提报的原因');
       }
     }
 
