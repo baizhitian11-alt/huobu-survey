@@ -606,7 +606,7 @@ function validate() {
         miss.push('商品「' + short + '」的不提报原因');
       } else if ((p.reasons || []).indexOf('入选链接非主推大链接') >= 0
                  && !String(p.smallLinkReason || '').trim()) {
-        miss.push('商品「' + short + '」主推大链接不能提报的原因');
+        miss.push('商品「' + short + '」小链接不能提报的原因');
       }
     }
 
