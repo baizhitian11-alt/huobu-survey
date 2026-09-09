@@ -120,8 +120,8 @@
     '提交ID', '提交时间', '活动', '客户名称', '排名', '商品名称', '商品来源',
     '消耗(万元)', '参考成交单价(元)',
     '提报情况', '补贴类型',
-    '补前价格(元)', '活动报名/最低到手价(元)', '实际到手价(元)',
-    '补贴力度(补前-实际到手)', '补贴率(%)',
+    '日常售价(元)', '活动报名价/原价(元)', '商家优惠券(元)', '平台补贴/满减(元)', '实际到手价(元)',
+    '平台补贴率(%)', '总优惠力度(元)', '总优惠率(%)', '价格校验提示',
     '审核进度', '审核已等待时长', '拒审原因',
     '商品质量-差评率', '商品质量-品退率', '商品质量-纠纷率',
     '拒审-提报价格', '天猫最低价', '抖音最低价', '快手最低价', '审核-其他说明',
@@ -136,8 +136,70 @@
   var DEFAULT_PRICE_KEY = '__default__';
 
   /** 空价格组 */
+  /** 空价格组
+   *  价格链路：报名价(原价) − 商家优惠券 − 平台补贴/满减 = 实际到手价
+   *  单独拆出商家优惠，才能算出「平台真实补贴力度」，
+   *  否则用 原价−实际到手价 会把商家自己出的券也算成平台补贴。
+   */
   function newPrice() {
-    return { prePrice: '', signupPrice: '', actualPrice: '' };
+    return {
+      dailyPrice: '',       // 日常售价（选填，仅作参考，不参与补贴核算）
+      signupPrice: '',      // 活动报名价 = 原价基准
+      merchantCoupon: '',   // 商家优惠券 / 店铺券（商家自己出）
+      platformSubsidy: '',  // 平台补贴 / 官方满减券（平台出）
+      actualPrice: '',      // 实际到手价（用户实付）
+    };
+  }
+
+  /**
+   * 价格核算（前端实时显示、Excel 导出共用同一套算法）
+   * 缺项会互相反推：只要「报名价 + 其中任意两项」就能补齐第三项。
+   * @returns {{signup, merchant, platform, actual, total, platformRate, totalRate, warn}}
+   */
+  function calcPrice(pr) {
+    pr = pr || {};
+    var num = function (v) {
+      var n = parseFloat(v);
+      return isFinite(n) ? n : null;
+    };
+    var r2 = function (n) { return Math.round(n * 100) / 100; };
+
+    var signup = num(pr.signupPrice);
+    var merchant = num(pr.merchantCoupon);
+    var platform = num(pr.platformSubsidy);
+    var actual = num(pr.actualPrice);
+    var warn = '';
+
+    // 商家券没填按 0 处理（多数情况商家不出券）
+    if (merchant === null && (platform !== null || actual !== null)) merchant = 0;
+
+    if (signup !== null) {
+      if (platform === null && actual !== null && merchant !== null) {
+        // 反推平台补贴 = 原价 − 商家券 − 实际到手
+        platform = r2(signup - merchant - actual);
+        if (platform < 0) { warn = '实际到手价高于扣除商家券后的价格，请核对'; platform = null; }
+      } else if (actual === null && platform !== null && merchant !== null) {
+        actual = r2(signup - merchant - platform);
+      } else if (platform !== null && actual !== null && merchant !== null) {
+        // 三项都填了，校验是否自洽
+        var expect = r2(signup - merchant - platform);
+        if (Math.abs(expect - actual) > 0.01) {
+          warn = '价格不平：原价 ' + signup + ' − 商家券 ' + merchant
+            + ' − 平台补贴 ' + platform + ' 应为 ' + expect + '，与实际到手价 ' + actual + ' 不一致';
+        }
+      }
+    }
+
+    var total = (signup !== null && actual !== null) ? r2(signup - actual) : null;
+    var platformRate = (platform !== null && signup > 0)
+      ? Math.round((platform / signup) * 10000) / 100 : null;
+    var totalRate = (total !== null && signup > 0)
+      ? Math.round((total / signup) * 10000) / 100 : null;
+
+    return {
+      signup: signup, merchant: merchant, platform: platform, actual: actual,
+      total: total, platformRate: platformRate, totalRate: totalRate, warn: warn,
+    };
   }
 
   /** 一个商品行 */
@@ -256,19 +318,16 @@
 
         keys.forEach(function (key) {
           var pr = (p.prices && p.prices[key]) || {};
-          var pre = N(pr.prePrice);
-          var actual = N(pr.actualPrice);
-          var gap = (typeof pre === 'number' && typeof actual === 'number')
-            ? Math.round((pre - actual) * 100) / 100 : '';
-          var rate = (typeof pre === 'number' && typeof actual === 'number' && pre > 0)
-            ? Math.round(((pre - actual) / pre) * 10000) / 100 : '';
+          var c = calcPrice(pr);
+          var E = function (v) { return v === null || v === undefined ? '' : v; };
           var qr = p.qualityRates || {};
 
           detail.push([
             id, t, act, S(s.brand), i + 1, S(p.name), S(p.source),
             N(p.cost), N(p.refPrice),
             S(p.status), key === DEFAULT_PRICE_KEY ? '' : key,
-            pre, N(pr.signupPrice), actual, gap, rate,
+            N(pr.dailyPrice), E(c.signup), E(c.merchant), E(c.platform), E(c.actual),
+            E(c.platformRate), E(c.total), E(c.totalRate), S(c.warn),
             S(p.audit), S(p.auditWait), A(p.rejectReasons),
             S(qr['近14天差评率']), S(qr['近14天品退率']), S(qr['近14天纠纷率']),
             N(p.rejectPrice), N(p.priceTmall), N(p.priceDouyin), N(p.priceKuaishou), S(p.auditOther),
@@ -297,7 +356,8 @@
       },
       {
         name: '商品提报明细',
-        cols: [12, 18, 12, 14, 6, 50, 10, 12, 15, 11, 22, 12, 20, 14, 18, 11,
+        cols: [12, 18, 12, 14, 6, 50, 10, 12, 15, 11, 22,
+               12, 17, 14, 16, 14, 14, 14, 12, 34,
                12, 16, 20, 14, 14, 14, 15, 13, 13, 13, 22, 16,
                30, 26, 18, 24, 13, 26, 20, 13, 24, 20]
           .map(function (w) { return { w: w }; }),
@@ -324,6 +384,7 @@
     DETAIL_HEADER: DETAIL_HEADER,
     DEFAULT_PRICE_KEY: DEFAULT_PRICE_KEY,
     newPrice: newPrice,
+    calcPrice: calcPrice,
     newProduct: newProduct,
     newState: newState,
     flatten: flatten,

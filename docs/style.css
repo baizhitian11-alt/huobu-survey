@@ -413,3 +413,16 @@ table.xls td.empty { background: #fcfcfd; }
 /* 无需填价格的补贴类型（如大场/跃迁激励） */
 .pblock.no-price { background: #fafbfd; border-style: dashed; }
 .np-tip { font-size: 12.5px; color: var(--muted); margin-top: 4px; line-height: 1.6; }
+
+/* 价格口径说明与校验提示 */
+.price-note {
+  margin-top: 9px; font-size: 12px; color: var(--muted); line-height: 1.7;
+  background: #f7f9fc; border-left: 3px solid #d8e0ef; padding: 6px 10px; border-radius: 0 6px 6px 0;
+}
+.calc.bad {
+  color: #d4380d; background: rgba(212,56,13,.07);
+}
+.price-extra { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #e6ebf5; }
+.price-extra .label i {
+  font-style: normal; font-size: 11px; color: #9aa3b5; font-weight: 400;
+}

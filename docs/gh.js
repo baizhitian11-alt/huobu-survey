@@ -105,9 +105,26 @@
         groups[k].forEach(function (p) {
           var extra = '';
           if (k === '已提报') {
-            extra = '｜补前 ' + (p.prePrice || '-') + ' / 报名 ' + (p.signupPrice || '-')
-              + ' / 到手 ' + (p.actualPrice || '-');
             if ((p.subTypes || []).length) extra += '｜' + p.subTypes.join('、');
+            // 按补贴类型逐组列价格，平台补贴与商家优惠分开
+            var SCH = (typeof window !== 'undefined' && window.HBSchema) || null;
+            var keys = (p.subTypes || []).length ? p.subTypes : ['__default__'];
+            var segs = [];
+            keys.forEach(function (sk) {
+              var pr = (p.prices || {})[sk];
+              if (!pr) return;
+              var c = SCH && SCH.calcPrice ? SCH.calcPrice(pr) : null;
+              if (!c || c.signup === null) return;
+              var one = (sk === '__default__' ? '' : sk + ': ')
+                + '原价 ' + c.signup
+                + (c.merchant ? ' / 商家券 ' + c.merchant : '')
+                + (c.platform !== null ? ' / 平台补贴 ' + c.platform
+                    + (c.platformRate !== null ? '(' + c.platformRate + '%)' : '') : '')
+                + (c.actual !== null ? ' / 到手 ' + c.actual : '')
+                + (c.warn ? ' ⚠' + c.warn : '');
+              segs.push(one);
+            });
+            if (segs.length) extra += '｜' + segs.join('；');
             if (p.audit) {
               extra += '｜审核：' + p.audit;
               if (p.audit === '审核中' && p.auditWait) extra += '(' + p.auditWait + ')';

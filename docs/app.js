@@ -109,23 +109,43 @@ function priceBlock(p, i, key, label) {
   var attr = function (f) {
     return 'data-pi="' + i + '" data-pk="' + esc(key) + '" data-pf="' + f + '"';
   };
+  var fld = function (f, title, ph, req) {
+    return '<label class="field"><span class="label">' + esc(title)
+      + (req ? ' <span class="req">*</span>' : '') + '</span>'
+      + '<input type="number" step="0.01" min="0" ' + attr(f)
+      + ' value="' + esc(pr[f] || '') + '" placeholder="' + esc(ph) + '"/></label>';
+  };
 
   var h = '<div class="pblock">';
   if (label) h += '<div class="pblock-tag">' + esc(label) + '</div>';
+
   h += '<div class="price-row">'
-    + '<label class="field"><span class="label">补前价格(元)</span>'
-    + '<input type="number" step="0.01" ' + attr('prePrice') + ' value="' + esc(pr.prePrice || '') + '" placeholder="活动前售价"/></label>'
-    + '<label class="field"><span class="label">报名/最低到手价(元)</span>'
-    + '<input type="number" step="0.01" ' + attr('signupPrice') + ' value="' + esc(pr.signupPrice || '') + '" placeholder="报名承诺价"/></label>'
-    + '<label class="field"><span class="label">实际到手价(元)</span>'
-    + '<input type="number" step="0.01" ' + attr('actualPrice') + ' value="' + esc(pr.actualPrice || '') + '" placeholder="用户实付"/></label>'
+    + fld('signupPrice', '活动报名价 / 原价(元)', '报名时的挂牌原价', true)
+    + fld('merchantCoupon', '商家优惠券(元)', '店铺券，没有填 0')
+    + fld('platformSubsidy', '平台补贴 / 满减(元)', '平台出的部分')
+    + fld('actualPrice', '实际到手价(元)', '用户最终实付')
+    + '</div>'
+    + '<div class="price-note">口径：报名价(原价) − 商家优惠券 − 平台补贴 = 实际到手价。'
+    + '四项填其中三项即可，剩下一项会自动算出。</div>';
+
+  var c = SCH.calcPrice(pr);
+  if (c.warn) {
+    h += '<div class="calc bad">⚠ ' + esc(c.warn) + '</div>';
+  } else if (c.platform !== null && c.signup > 0) {
+    h += '<div class="calc">平台补贴 <b>' + c.platform + ' 元</b>'
+      + '（补贴率 <b>' + (c.platformRate === null ? '-' : c.platformRate + '%') + '</b>）'
+      + (c.merchant ? '　商家优惠 <b>' + c.merchant + ' 元</b>' : '')
+      + (c.total !== null ? '　用户共省 <b>' + c.total + ' 元</b>' : '')
+      + '</div>';
+  }
+
+  // 日常售价作为参考项，收在后面，避免干扰主链路
+  h += '<div class="price-extra">'
+    + '<label class="field" style="max-width:230px"><span class="label">日常售价(元)　<i>选填，仅作参考</i></span>'
+    + '<input type="number" step="0.01" min="0" ' + attr('dailyPrice')
+    + ' value="' + esc(pr.dailyPrice || '') + '" placeholder="非活动期售价"/></label>'
     + '</div>';
 
-  var pre = parseFloat(pr.prePrice), ac = parseFloat(pr.actualPrice);
-  if (isFinite(pre) && isFinite(ac) && pre > 0) {
-    h += '<div class="calc">补贴力度 <b>' + (Math.round((pre - ac) * 100) / 100)
-      + ' 元</b>，补贴率 <b>' + (Math.round(((pre - ac) / pre) * 1000) / 10) + '%</b></div>';
-  }
   return h + '</div>';
 }
 
@@ -384,11 +404,17 @@ function renderConfirm() {
               return tag + '<span style="color:#7a8399">无需填价格</span>';
             }
             var pr = (p.prices && p.prices[key]) || {};
-            var parts = [];
-            if (pr.prePrice) parts.push('补前 ' + pr.prePrice);
-            if (pr.signupPrice) parts.push('报名 ' + pr.signupPrice);
-            if (pr.actualPrice) parts.push('到手 ' + pr.actualPrice);
-            return tag + (parts.length ? parts.join(' / ') : '<i>价格未填</i>');
+            var c = SCH.calcPrice(pr);
+            if (c.signup === null) return tag + '<i>价格未填</i>';
+            var seg = '原价 ' + c.signup;
+            if (c.merchant) seg += ' / 商家券 ' + c.merchant;
+            if (c.platform !== null) {
+              seg += ' / <b>平台补贴 ' + c.platform
+                + (c.platformRate !== null ? '（' + c.platformRate + '%）' : '') + '</b>';
+            }
+            if (c.actual !== null) seg += ' / 到手 ' + c.actual;
+            if (c.warn) seg += ' <span style="color:#d4380d">⚠ 待核对</span>';
+            return tag + seg;
           }).join('<br/>');
 
           extra += '<br/><span class="au">审核：' + esc(p.audit || '未填')
