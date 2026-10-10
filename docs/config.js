@@ -33,10 +33,10 @@ window.HB_CONFIG = {
      *     ['Z2l0aHVi', 'X3BhdF9B', 'QkNE']
      */
     tokenParts: [
-      'Z2l0aHViX3BhdF8xMUNDQVM0V0EwczF',
-      'ycTU5SURHVnRrX0RwZWExMXpwa0swdj',
-      'I0OVlZR2YwVHhVeXgxbmJlUU1ua3ZDe',
-      'nNMS1JFZkVTSEdIRzJHVmlWUDBnR1Uw',
+      'Z2l0aHViX3BhdF8xMUNDQVM0V0EwY1Q',
+      'xMDF1NDlXaEpRX3NGY1dkdWJuN3FhUV',
+      'hnWnJHdWtiblE1ZUYxcEhMYzZPM3VhZ',
+      '1FmYVNXZGhNWE81M0o3M092Q3dKdEJi',
     ],
   },
 
