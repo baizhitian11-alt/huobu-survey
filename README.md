@@ -198,6 +198,6 @@ cd docs && python3 -m http.server 8091
 
 - 客户页：`exuan.html`
   - **上半部分 = 固定问卷**：题目在 `docs/exuan-config.js` 的 `questions` 数组里（当前是占位文案，拿到企微文档正文后只改这一个文件）。`deadline` 填截止时间后会显示倒计时；**过了时间不锁死**，仍可提交但标记「逾期提交」。
-  - **下半部分 = 凭证上传**：随时可传，图片（自动压缩）+ PDF，单个 ≤5MB。文件存到仓库 `data` 分支的 `uploads/exuan/` 下，并在该客户的 issue 里追加评论登记。客户没交上半部分也能先传凭证（自动建占位记录）。
-- 运营侧：`merge.html` 底部的「双11鹅选美妆节」卡片 —— 拉取报名 + 凭证，表格里可展开看凭证原图/文件，一键导出 Excel（Sheet1 报名、Sheet2 凭证清单）。
+  - **下半部分 = 凭证上传**：一个模块一张凭证，各自独立上传/重新上传（模块在 `exuan-config.js` 的 `voucher.modules` 里配，当前为占位文案）。随时可传，图片（自动压缩）+ PDF，单个 ≤5MB。文件存到仓库 `data` 分支的 `uploads/exuan/{客户}/{模块}-时间戳.扩展名`，并在该客户的 issue 里追加评论登记。客户没交上半部分也能先传凭证（自动建占位记录）。
+- 运营侧：`merge.html` 底部的「双11鹅选美妆节」卡片 —— 拉取报名 + 凭证，表格里可展开看凭证原图/文件，一键导出 Excel（Sheet1 报名、Sheet2 凭证透视：一客户一行 × 一模块一列、Sheet3 凭证明细）。
 - **token 权限注意**：凭证上传需要 token 同时有 `Issues: Read and write` 和 `Contents: Read and write`（只授权这一个仓库）。改完权限后重新 `python3 set_token.py <新token>` 并 push。

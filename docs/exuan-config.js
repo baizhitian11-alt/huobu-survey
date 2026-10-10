@@ -1,117 +1,174 @@
 /**
- * 双11鹅选美妆节 · 模块配置
+ * 腾讯营销 × 鹅选美妆节 · 双11大促招募令 —— 模块配置
+ * 内容来源：企微文档《腾讯营销 × 鹅选美妆节》（w3_AWMAzwa2AM0CNbzB52HJXRBmXN6As）
  *
- * ╔══════════════════════════════════════════════════════════╗
- * ║  TODO：上半部分的题目是「占位文案」，等企微文档正文确认后 ║
- * ║  只需要改这个文件里的 questions 数组，页面自动更新。      ║
- * ╚══════════════════════════════════════════════════════════╝
+ * 改题目 / 改凭证要求，只需要改这个文件。
  *
- * 题目支持的类型 type：
- *   text     单行输入
- *   textarea 多行输入
- *   single   单选（options 数组）
- *   multi    多选（options 数组）
- * 通用字段：
- *   required   是否必填（默认 true）
- *   allowOther 单选/多选时是否带「其他（可填）」
- *   showWhen   条件显示，如 { key:'join', equals:'参加' } 表示上一题选「参加」才显示
- *   hint       题目下方的灰色小字说明
+ * 题目类型 type：
+ *   text     单行文本        number   数字（可带 unit 单位）
+ *   date     日期（可带 min/max）
+ *   single   单选            multi    多选（options 数组）
+ * 通用字段：required（默认 true）、hint、showWhen: { key, equals }
  */
 window.HB_EXUAN = {
 
-  activityName: '双11鹅选美妆节',
+  activityName: '腾讯营销 × 鹅选美妆节',
+  subTitle: '双11大促招募令',
   label: 'exuan',            // GitHub issue 标签，不要改
 
-  /* ── 上半部分截止时间 ──────────────────────────────────
-   * 填 ISO 时间字符串，例如 '2026-10-15T23:59:59+08:00'
-   * 留空 '' 则不显示倒计时。
-   * 注意：按需求「不卡死」—— 过了时间仍可提交，但会标记为「逾期提交」。
+  /* ── 活动说明（页面顶部） ── */
+  intro: {
+    time: '活动时间：10.12 - 11.15',
+    rights: [
+      { name: '基础腾飞权益', desc: '小店全资/混资补贴 & 分享券 + 广告腾飞扶持 + 大场激励 + 广告审核放宽' },
+      { name: '加码腾飞权益', desc: '落地起量建议，并上传凭证等待官方校验，排位赛瓜分加码激励' },
+    ],
+  },
+
+  /* ── 上半部分：盘直播，报规划，获基础腾飞 ──
+   * 截止 10.13，全部必填。按需求「不卡死」：过了时间仍可提交，标记为「逾期提交」。
    */
-  deadline: '',
+  part1: {
+    title: '一、盘直播，报规划，获基础腾飞！',
+    timeTip: '填写时间：10.13日前【全部为必填】',
+  },
+  deadline: '2026-10-13T23:59:59+08:00',
 
-  heroDesc: '请先在下方完成活动报名（上半部分）；扶持凭证可随时在页面底部上传，凭证审核通过后给予进一步扶持。',
-
-  /* ── 上半部分：固定问卷（占位文案，待企微文档正文替换）── */
   questions: [
+    // 1、品牌名称 → 页面上的「品牌名称」输入框（带联想），不在此数组里
+    { key: 'sales', title: '对接腾讯销售', type: 'text', placeholder: '销售姓名' },
+    { key: 'dailyCost', title: '日耗预估', type: 'number', unit: '万元', placeholder: '如：5' },
+    { key: 'growth', title: '预估涨幅', type: 'number', unit: '%', placeholder: '如：30', hint: '相对日常的预估涨幅，填 30 即 +30%' },
     {
-      key: 'join',
-      title: '是否参加「双11鹅选美妆节」？',
-      type: 'single',
-      options: ['参加', '不参加'],
-      required: true,
-      hint: '',
+      key: 'bigLiveDate', title: '双十一大场日期', type: 'date',
+      min: '2026-10-12', max: '2026-11-15',
+      hint: '10.12-11.15 期间，核心填预估大场日，无需填周期',
+    },
+    { key: 'tengfeiId', title: '腾飞账户ID', type: 'text', placeholder: '广告账户 ID' },
+    {
+      key: 'manjianCoupon', title: '是否已提报微信小店「双11满减券」活动',
+      type: 'single', options: ['是', '否'],
     },
     {
-      key: 'joinMode',                                    /* TODO: 按文档上半部分替换 */
-      title: '意向参与形式',
-      type: 'multi',
-      options: ['直播大场', '日常店播', '短视频带货', '货架场'],
-      allowOther: true,
-      required: true,
-      showWhen: { key: 'join', equals: '参加' },
-      hint: '',
+      key: 'manjianType', title: '满减为全资 or 混资？',
+      type: 'single', options: ['全资', '混资'],
+      hint: '全资 -「好店」标识商家；混资 - 非好店商家，1:1 出资',
     },
     {
-      key: 'mainProducts',                                /* TODO: 按文档上半部分替换 */
-      title: '主推商品 / 货盘（每行一个）',
-      type: 'textarea',
-      required: true,
-      showWhen: { key: 'join', equals: '参加' },
-      hint: '格式建议：商品名 + 到手价，如「xxx面霜 199元」',
+      key: 'bigLiveIncentive', title: '是否已提报微信小店「直播大场及跃迁激励」活动',
+      type: 'single', options: ['是', '否'],
     },
     {
-      key: 'expectGmv',                                   /* TODO: 按文档上半部分替换 */
-      title: '活动期间预期 GMV',
-      type: 'single',
-      options: ['10万以下', '10-50万', '50-100万', '100万以上'],
-      required: false,
-      showWhen: { key: 'join', equals: '参加' },
-      hint: '',
+      key: 'shareCoupon', title: '是否已提报微信小店「主播分享券」活动',
+      type: 'single', options: ['是', '否'],
     },
     {
-      key: 'supportNeed',                                 /* TODO: 按文档上半部分替换 */
-      title: '希望获得的扶持 / 资源',
-      type: 'multi',
-      options: ['流量扶持', '货补支持', '达人撮合', '运营陪跑'],
-      allowOther: true,
-      required: false,
-      showWhen: { key: 'join', equals: '参加' },
-      hint: '',
+      key: 'star', title: '是否有明星素材',
+      type: 'single', options: ['≥3个明星', '2个明星', '1个明星', '暂无明星但在谈', '无明星计划'],
     },
+    {
+      key: 'anchor', title: '节点主播形式', type: 'multi',
+      options: ['明星进播', '总裁进播', 'IP主播进播', 'TOP店播主播', '普通店播主播'],
+      hint: '可多选',
+    },
+    {
+      key: 'goods', title: '节点货盘是否有变化', type: 'multi',
+      options: ['日常价+节点限时加赠品', '节点特供礼盒or套装', '双SKU囤货装（日常价SKU+囤货装SKU）', '日常机制无调整'],
+      hint: '可多选',
+    },
+    {
+      key: 'scene', title: '节点直播场景创新', type: 'multi',
+      options: ['展会', '仓库', '商场柜台', '户外', '照日播暂无改变'],
+      hint: '可多选',
+    },
+    { key: 'decoration', title: '直播间是否有主题装修', type: 'single', options: ['是', '否'] },
+    { key: 'bidUp', title: '是否接受出价提高', type: 'single', options: ['是', '否'] },
   ],
 
-  /* ── 下半部分：凭证模块 ────────────────────────────────
-   * 一个模块 = 一张凭证，各自独立上传、独立审核。
-   * TODO: 模块名称/说明是占位文案，按企微文档下半部分替换。
-   * 每个模块字段：
-   *   key      唯一标识（英文，不要改已有的，改了会跟历史数据对不上）
-   *   name     模块名称（给客户看的）
-   *   desc     模块说明：要传什么、怎么才算合格
-   *   required 是否必传（仅作提示，不强制——凭证随时可传）
+  /* ── 下半部分：排位赛，传凭证，领加码激励 ──
+   * 一个模块 = 一个排位事项，各自独立上传。
+   * slots：该模块下的凭证格子，一格一张（如大场力最多 6 场 → 6 格）
+   * extraField：上传前需填写的附加信息（如素材力的上线账户ID）
+   * noUpload：无需上传，官方校验（只展示标准）
+   * examples：示例图（docs/assets/exuan/ 下）
    */
   voucher: {
-    title: '扶持凭证上传',
-    desc: '每个模块单独上传对应的一张凭证，审核通过后给予进一步扶持。支持截图图片（自动压缩）和 PDF，单个文件不超过 5MB，随时可传、可重新上传覆盖。',
+    title: '二、排位赛，传凭证，领加码激励！',
+    timeTip: '填写时间：11.4日前【选填，支持周期内上传】',
+    totalScore: '美力值【总30分】',
+    rankTip: '周榜单更新：每周三更新榜单排名，时间：10.21、10.28、11.4、11.11',
     accept: '.png,.jpg,.jpeg,.webp,.gif,.pdf',
     maxMB: 5,
     modules: [
       {
-        key: 'signup',
-        name: '凭证① 活动报名成功截图',
-        desc: 'TODO占位：按文档要求说明，如「报名页显示报名成功的完整截图，需露出店铺名」',
-        required: true,
+        key: 'goods',
+        name: '商品力',
+        score: '0-2分',
+        standard: ['提报微信小店双11补贴：微信小店后台 - 营销中心 - 平台活动'],
+        uploadTip: '上传「提报补贴成功」截图',
+        slots: ['提报补贴成功截图'],
+        examples: ['assets/exuan/goods-subsidy.jpg'],
       },
       {
-        key: 'live',
-        name: '凭证② 直播场次截图',
-        desc: 'TODO占位：按文档要求说明',
-        required: true,
+        key: 'bigLive',
+        name: '大场力',
+        score: '0-6分',
+        standard: ['① 人 / 货 / 场任一维度升级', '② 张贴双11鹅选美妆节贴片'],
+        uploadTip: '上传「大场」截图（最多 6 场，一场一张）',
+        slots: ['第1场', '第2场', '第3场', '第4场', '第5场', '第6场'],
+        examples: ['assets/exuan/live-upgrade.jpg'],
       },
       {
-        key: 'data',
-        name: '凭证③ 数据截图',
-        desc: 'TODO占位：按文档要求说明',
-        required: false,
+        key: 'material',
+        name: '素材力',
+        score: '0-8分',
+        standard: ['四类高eco内容素材各上线 20 条+'],
+        uploadTip: '上传「高eco素材」截图，并填写上线账户ID',
+        slots: ['机制素材场景化', '剧情内容效果化', '人设内容情感化', '实时资讯热点化'],
+        extraField: { key: 'accountId', label: '素材上线账户ID', placeholder: '多个用逗号分隔', required: true },
+        examples: ['assets/exuan/eco-material.jpg'],
+      },
+      {
+        key: 'ads',
+        name: '投放力',
+        score: '0-10分',
+        standard: [
+          '全店托管投放双11补贴商品 > 5 个',
+          'ADQ 投放主页原生素材 > 200 条',
+          '潜客优投广告占比 > 30%',
+          '创意优投广告占比 > 10%',
+          '非视频号版位占比 > 30%',
+        ],
+        noUpload: true,
+        uploadTip: '无需上传，官方校验',
+        examples: [
+          'assets/exuan/ads-tuoguan.jpg',
+          'assets/exuan/ads-adq-native.jpg',
+          'assets/exuan/ads-qianke.jpg',
+          'assets/exuan/ads-chuangyi.jpg',
+        ],
+      },
+      {
+        key: 'local',
+        name: '本土力',
+        score: '0-2分',
+        standard: ['① 视频号单开直播间', '② 张贴双11鹅选美妆节贴片'],
+        uploadTip: '上传「单开直播间」截图',
+        slots: ['单开直播间截图'],
+        examples: [],
+      },
+      {
+        key: 'biz',
+        name: '经营力',
+        score: '0-2分',
+        standard: ['成功入驻经营号'],
+        uploadTip: '上传「经营号入驻成功界面」截图',
+        slots: ['经营号入驻成功界面截图'],
+        guide: {
+          text: '对客：腾讯营销【经营户】入驻指南',
+          url: 'https://doc.weixin.qq.com/doc/w3_ACoA4QbEACcCNa3hYMLM1RJSMbyZl?scode=AJEAIQdfAAoPrbU4k3AR0AEAZ-ADE',
+        },
+        examples: ['assets/exuan/jingying.jpg'],
       },
     ],
   },

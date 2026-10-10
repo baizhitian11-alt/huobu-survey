@@ -3,78 +3,72 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>双11鹅选美妆节 · 活动报名与凭证上传</title>
+<title>腾讯营销 × 鹅选美妆节 · 双11大促招募令</title>
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 <div class="page">
-  <header class="hero act-hero">
+  <header class="hero act-hero ex-hero">
     <div class="act-nav" id="actNav"></div>
-    <h1>双11鹅选美妆节</h1>
-    <p class="hero-desc" id="heroDesc"></p>
-    <div class="deadline-box" id="deadlineBox" style="display:none"></div>
+    <h1 id="exTitle">腾讯营销 × 鹅选美妆节</h1>
+    <p class="hero-desc" id="exSub"></p>
+    <div class="ex-rights" id="exRights"></div>
   </header>
 
   <main>
-    <!-- ════════ 上半部分：固定问卷（限时） ════════ -->
+    <!-- 品牌名称：上下两部分共用 -->
     <section class="card">
-      <h2><span class="idx">1</span>活动报名<span class="tag-time" id="part1Tag"></span></h2>
-
+      <h2><span class="idx">1</span>品牌名称</h2>
       <label class="field" style="max-width:520px">
-        <span class="label">客户名称 <span class="req">*</span></span>
-        <input id="brand" list="brandList" placeholder="输入客户简称，如：百雀羚" autocomplete="off" />
+        <span class="label">品牌名称 <span class="req">*</span></span>
+        <input id="brand" list="brandList" placeholder="输入品牌简称，如：百雀羚" autocomplete="off" />
         <datalist id="brandList"></datalist>
-        <span class="hint" id="brandHint"></span>
-      </label>
-
-      <div id="questionBox"></div>
-
-      <label class="field" style="margin-top:14px">
-        <span class="label">备注 / 想反馈的问题</span>
-        <textarea id="remark" rows="3" placeholder="选填"></textarea>
+        <span class="hint" id="brandHint">报名和凭证上传都按品牌名称关联，请保持一致</span>
       </label>
     </section>
 
+    <!-- ════════ 上半部分：报规划（限时） ════════ -->
     <section class="card">
-      <h2><span class="idx">✓</span>提交前确认</h2>
-      <div id="confirm"></div>
+      <h2 class="ex-part"><span id="p1Title"></span></h2>
+      <div class="ex-time" id="p1Time"></div>
+      <div class="deadline-box light" id="deadlineBox" style="display:none"></div>
+      <div id="questionBox"></div>
+      <label class="field" style="margin-top:18px">
+        <span class="label">备注（选填）</span>
+        <textarea id="remark" rows="2" placeholder="其他想补充的信息"></textarea>
+      </label>
+      <div class="ex-submit-row">
+        <span class="hint" id="p1State"></span>
+        <div class="btns">
+          <button class="btn ghost" id="btnClear">清空</button>
+          <button class="btn primary" id="btnSubmit">提交报规划</button>
+        </div>
+      </div>
     </section>
 
-    <!-- ════════ 下半部分：凭证上传（随时） ════════ -->
-    <section class="card voucher-card" id="voucherCard">
-      <h2><span class="idx">2</span><span id="voucherTitle">扶持凭证上传</span><span class="tag-anytime">随时可传</span></h2>
-      <p class="sub" id="voucherDesc"></p>
-
-      <label class="field" style="max-width:520px">
-        <span class="label">客户名称 <span class="req">*</span></span>
-        <input id="vBrand" list="brandList2" placeholder="与上方报名填写的客户名称保持一致" autocomplete="off" />
-        <datalist id="brandList2"></datalist>
-        <span class="hint">将自动关联到该客户的报名记录</span>
-      </label>
-
+    <!-- ════════ 下半部分：传凭证（随时） ════════ -->
+    <section class="card" id="voucherCard">
+      <h2 class="ex-part"><span id="p2Title"></span><span class="tag-anytime">随时可传</span></h2>
+      <div class="ex-time" id="p2Time"></div>
+      <div class="ex-rank" id="p2Rank"></div>
       <div id="vModules"></div>
-      <input type="file" id="vFile" style="display:none" />
-
       <div class="hint" id="vStatus" style="margin-top:10px"></div>
+      <input type="file" id="vFile" style="display:none" />
     </section>
   </main>
-
-  <footer class="actions">
-    <div class="save-tip">上半部分草稿自动保存 · 凭证上传不占用报名截止</div>
-    <div class="btns">
-      <button class="btn ghost" id="btnClear">清空上半部分</button>
-      <button class="btn primary" id="btnSubmit">提交活动报名</button>
-    </div>
-  </footer>
 </div>
 
 <div class="mask" id="doneMask">
   <div class="done">
     <div class="done-icon">✓</div>
-    <h3 id="doneTitle">报名提交成功！</h3>
+    <h3 id="doneTitle">提交成功！</h3>
     <p id="doneId"></p>
     <div class="btns" id="doneBtns"></div>
   </div>
+</div>
+
+<div class="mask" id="imgMask">
+  <img id="imgBig" alt="" />
 </div>
 
 <script src="config.js"></script>
