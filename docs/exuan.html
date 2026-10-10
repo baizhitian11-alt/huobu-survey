@@ -52,30 +52,15 @@
       <div class="ex-time" id="p2Time"></div>
       <div class="ex-rank" id="p2Rank"></div>
 
-      <!-- 排位规则（只读） -->
+      <div class="ex-uphint">每个排位事项在右侧「上传凭证」里单独上传，一次可选多张，周期内随时可传；图片 / PDF，单个 ≤5MB。已传的凭证就显示在对应格子里，点缩略图可查看。</div>
+
+      <!-- 排位事项表：每行自带上传入口 -->
       <div class="tbl-wrap" id="rkTable"></div>
+      <input type="file" id="vFile" multiple style="display:none" />
 
-      <!-- 唯一上传入口 -->
-      <div class="up-box">
-        <div class="up-title">上传凭证 <span>可一次选多张 · 支持截图 Ctrl/⌘+V 粘贴 · 图片/PDF 单个 ≤5MB</span></div>
-        <div class="vdrop" id="vDrop">
-          <div class="vdrop-icon">⇪</div>
-          <div class="vdrop-text">点击选择文件，或把文件拖到这里<br/>
-            <span class="vdrop-sub">选好后给每个文件选一下对应的排位事项，再点上传</span></div>
-        </div>
-        <input type="file" id="vFile" multiple style="display:none" />
-        <div id="vQueue"></div>
-        <div class="ex-submit-row" id="vActions">
-          <span class="hint" id="vStatus"></span>
-          <button class="btn primary" id="btnUpload" disabled>上传</button>
-        </div>
-      </div>
-
-      <!-- 我已上传的 -->
-      <div class="mine-box">
-        <div class="up-title">我已上传的凭证 <span id="mineCount"></span>
-          <button class="link-btn" id="btnMine" style="margin-left:auto">刷新</button></div>
-        <div id="vMine"></div>
+      <div class="ex-submit-row" style="margin-top:10px">
+        <span class="hint" id="vStatus"></span>
+        <button class="link-btn" id="btnMine">刷新已传凭证</button>
       </div>
     </section>
   </main>

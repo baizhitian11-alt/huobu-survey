@@ -675,3 +675,40 @@ table.xls td.empty { background: #fcfcfd; }
 }
 .q-bar select { width: auto; min-width: 180px; display: inline-block; margin-left: 4px; }
 .q-mod { flex: 0 0 200px; width: 200px; }
+
+/* ==== 鹅选 v4：每个排位事项一格上传入口 ==== */
+.ex-uphint {
+  font-size: 12.5px; color: #8a2d63; background: #fdf3f8; border: 1px solid #f3dce8;
+  border-radius: 8px; padding: 8px 12px; margin: 8px 0 10px; line-height: 1.7;
+}
+.cell-up { border-radius: 10px; padding: 2px; transition: .15s; }
+.cell-up.over { background: #fdf3f8; outline: 2px dashed #c0438c; outline-offset: 2px; }
+.cu-tip { font-size: 13px; color: #2b3348; margin-bottom: 6px; }
+.cu-extra {
+  width: 100%; box-sizing: border-box; padding: 6px 9px; margin-bottom: 6px;
+  border: 1px solid #dbe1ee; border-radius: 7px; font-size: 12.5px;
+}
+.cu-extra:focus { outline: none; border-color: #c0438c; }
+.cu-list { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.cu-it {
+  position: relative; display: block; width: 56px; height: 56px; border-radius: 7px; overflow: hidden;
+  border: 1px solid #e6ebf5; background: #f4f6fa; text-decoration: none;
+}
+.cu-it:hover { border-color: #c0438c; }
+.cu-it img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cu-it.busy img { opacity: .45; }
+.cu-it.busy i {
+  position: absolute; left: 0; right: 0; bottom: 0; background: rgba(43,108,255,.85); color: #fff;
+  font-style: normal; font-size: 10px; text-align: center; line-height: 16px;
+}
+.cu-pdf {
+  display: flex; width: 100%; height: 100%; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; color: #d4380d; background: #fff1f0;
+}
+.cu-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.cu-n { font-size: 12px; color: #b3bac9; }
+.cu-n.ok { color: #06a552; font-weight: 600; }
+.cu-msg { font-size: 12px; margin-top: 5px; line-height: 1.6; }
+.cu-msg.ok { color: #06a552; }
+.cu-msg.bad { color: #d4380d; }
+.rk-tbl td { padding-top: 12px; padding-bottom: 12px; }

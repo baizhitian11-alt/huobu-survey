@@ -1,7 +1,7 @@
 /**
  * 腾讯营销 × 鹅选美妆节 · 客户页
  * 上半部分：报规划（10.13 截止，不卡死，逾期标记）
- * 下半部分：排位赛凭证（随时可传；单入口多选，每个文件标注对应排位事项）
+ * 下半部分：排位赛凭证（随时可传；每个排位事项一个上传入口，可多张）
  */
 (function () {
   'use strict';
@@ -242,155 +242,150 @@
       .finally(function () { btn.disabled = false; });
   }
 
-  /* ================= 下半部分：排位赛凭证（单入口 · 多张 · 随时） ================= */
+  /* ================= 下半部分：排位赛凭证（每个排位事项一个上传入口 · 可多张 · 随时） ================= */
   var MODS = XC.voucher.modules || [];
   var UP_MODS = MODS.filter(function (m) { return !m.noUpload; });
   var modBy = function (k) { return MODS.filter(function (m) { return m.key === k; })[0]; };
-  var QUEUE = [];        // 待上传 [{id, file, mod, status: wait|uploading|fail, msg, preview}]
-  var MINE = [];         // 已上传凭证记录
-  var uploading = false;
-  var seq = 0;
+  var MINE = [];        // 该品牌已上传的凭证
+  var BUSY = {};        // modKey -> [{ name, preview }]
+  var MSG = {};         // modKey -> { cls, text }
+  var pickingMod = null;
   var vIssueCache = {};
+  var issuePromise = {};
   var isImgName = function (s) { return /\.(png|jpe?g|webp|gif)$/i.test(s || ''); };
 
-  /* ---- 规则表（只读） ---- */
+  /* ---- 表格：排位事项 / 标准说明 / 上传凭证(入口) / 美力值 ---- */
   function renderRules() {
     $('#rkTable').innerHTML = '<table class="tbl rk-tbl"><thead><tr>'
-      + '<th style="width:84px">排位事项</th><th>标准说明</th><th style="width:200px">上传凭证</th><th style="width:76px">美力值</th>'
+      + '<th style="width:76px">排位事项</th><th>标准说明</th>'
+      + '<th style="width:340px">上传凭证</th><th style="width:72px">美力值</th>'
       + '</tr></thead><tbody>' + MODS.map(function (m) {
+        var up;
+        if (m.noUpload) {
+          up = '<span class="rk-gov-s">无需上传 · 官方校验</span>';
+        } else {
+          up = '<div class="cell-up" data-mod="' + esc(m.key) + '"><div class="cu-tip">' + esc(m.uploadTip) + '</div>';
+          if (m.extraField) {
+            up += '<input class="rk-extra cu-extra" data-mod="' + esc(m.key) + '" value="'
+              + esc((state.extra || {})[m.key] || '') + '" placeholder="' + esc(m.extraField.label)
+              + (m.extraField.required ? '（必填）' : '') + '"/>';
+          }
+          up += '<div id="cu-' + esc(m.key) + '"></div></div>';
+        }
         return '<tr><td><b>' + esc(m.name) + '</b></td><td><ul class="rk-ul">'
           + m.standard.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ul>'
           + (m.guide ? '<a class="rk-guide" href="' + esc(m.guide.url) + '" target="_blank">📖 ' + esc(m.guide.text) + '</a>' : '')
           + ((m.examples || []).length ? '<div class="rk-ex">' + m.examples.map(function (src) {
             return '<img src="' + esc(src) + '" data-big="' + esc(src) + '" loading="lazy" alt="示例"/>';
           }).join('') + '</div>' : '')
-          + '</td><td>' + (m.noUpload ? '<span class="rk-gov-s">无需上传 · 官方校验</span>' : esc(m.uploadTip)) + '</td>'
-          + '<td class="rk-sc">🔥 ' + esc(m.score) + '</td></tr>';
+          + '</td><td>' + up + '</td><td class="rk-sc">🔥 ' + esc(m.score) + '</td></tr>';
       }).join('') + '</tbody></table>';
+    renderAllCells();
   }
 
-  /* ---- 待上传队列 ---- */
-  function addFiles(list) {
-    var maxB = (XC.voucher.maxMB || 5) * 1048576, bad = [];
-    Array.prototype.forEach.call(list || [], function (f) {
-      var isImg = /^image\//.test(f.type);
-      var isPdf = f.type === 'application/pdf' || /\.pdf$/i.test(f.name);
-      if (!isImg && !isPdf) { bad.push(f.name + '（仅支持图片/PDF）'); return; }
-      if (f.size > maxB) { bad.push(f.name + '（超过 ' + (XC.voucher.maxMB || 5) + 'MB）'); return; }
-      QUEUE.push({
-        id: ++seq, file: f, mod: state.lastMod || '', status: 'wait',
-        preview: isImg ? URL.createObjectURL(f) : '',
-      });
-    });
-    if (bad.length) alert('以下文件未加入：\n· ' + bad.join('\n· '));
-    renderQueue();
+  /* ---- 单个事项的上传格：已传缩略图 + 上传中 + 按钮 ---- */
+  function renderCell(key) {
+    var el = document.getElementById('cu-' + key);
+    if (!el) return;
+    var m = modBy(key);
+    var list = MINE.filter(function (v) { return v.module === key; })
+      .sort(function (a, b) { return String(a.uploadedAt).localeCompare(String(b.uploadedAt)); });
+    var busy = BUSY[key] || [];
+    var h = '';
+    if (list.length || busy.length) {
+      h += '<div class="cu-list">' + list.map(function (v) {
+        return '<a class="cu-it" href="' + esc(v.url) + '" target="_blank" title="' + esc(v.name + ' · ' + fmtT(v.uploadedAt)) + '">'
+          + (isImgName(v.path || v.name) ? '<img src="' + esc(v.__local || v.url) + '" loading="lazy" alt=""/>'
+            : '<span class="cu-pdf">PDF</span>') + '</a>';
+      }).join('') + busy.map(function (b) {
+        return '<span class="cu-it busy">' + (b.preview ? '<img src="' + b.preview + '" alt=""/>'
+          : '<span class="cu-pdf">PDF</span>') + '<i>上传中</i></span>';
+      }).join('') + '</div>';
+    }
+    h += '<div class="cu-bar"><button class="btn sm ' + (list.length ? 'ghost' : 'primary') + ' cu-btn" data-mod="'
+      + esc(key) + '"' + (busy.length ? ' disabled' : '') + '>'
+      + (busy.length ? '上传中…' : (list.length ? '＋ 继续上传' : '＋ 上传凭证')) + '</button>'
+      + '<span class="cu-n' + (list.length ? ' ok' : '') + '">'
+      + (list.length ? '已传 ' + list.length + ' 张' : '未上传') + (m.max ? ' · 最多 ' + m.max + ' 场' : '')
+      + '</span></div>';
+    var msg = MSG[key];
+    if (msg) h += '<div class="cu-msg ' + msg.cls + '">' + msg.text + '</div>';
+    el.innerHTML = h;
   }
 
-  function modOptions(sel) {
-    return '<option value="">— 选择对应排位事项 —</option>' + UP_MODS.map(function (m) {
-      return '<option value="' + esc(m.key) + '"' + (m.key === sel ? ' selected' : '') + '>'
-        + esc(m.name) + '</option>';
-    }).join('');
+  function renderAllCells() {
+    UP_MODS.forEach(function (m) { renderCell(m.key); });
+    var st = $('#vStatus');
+    if (!state.brand.trim()) st.textContent = '请先在最上方填写品牌名称，再上传凭证';
+    else st.textContent = MINE.length ? '「' + state.brand.trim() + '」共已上传 ' + MINE.length + ' 张凭证' : '';
   }
 
-  function renderQueue() {
-    var btn = $('#btnUpload');
-    if (!QUEUE.length) {
-      $('#vQueue').innerHTML = '';
-      btn.disabled = true;
-      btn.textContent = '上传';
+  function readyFor(key) {
+    var m = modBy(key);
+    if (!state.brand.trim()) {
+      alert('请先在最上方填写品牌名称');
+      $('#brand').focus();
+      return false;
+    }
+    if (m.extraField && m.extraField.required && !String((state.extra || {})[key] || '').trim()) {
+      alert('请先填写「' + m.name + ' · ' + m.extraField.label + '」');
+      var inp = document.querySelector('.cu-extra[data-mod="' + key + '"]');
+      if (inp) inp.focus();
+      return false;
+    }
+    if (!GHUB.enabled()) {
+      alert('当前未开通在线上传，请把凭证发给对接的腾讯销售。');
+      return false;
+    }
+    return true;
+  }
+
+  /* ---- 表格内交互 ---- */
+  var tbl = $('#rkTable');
+  tbl.addEventListener('click', function (e) {
+    var img = e.target.closest('img[data-big]');
+    if (img) {
+      $('#imgBig').src = img.dataset.big;
+      $('#imgMask').classList.add('show');
       return;
     }
-    var h = '<div class="q-bar">已选 <b>' + QUEUE.length + '</b> 个文件'
-      + (QUEUE.length > 1 ? '　全部设为 <select id="qAll"' + (uploading ? ' disabled' : '') + '>' + modOptions('') + '</select>' : '')
-      + '</div>';
-    h += QUEUE.map(function (q) {
-      var meta = Math.round(q.file.size / 1024) + 'KB';
-      if (q.status === 'uploading') meta += ' · <span class="doing">上传中…</span>';
-      if (q.status === 'fail') meta += ' · <span class="bad">失败：' + esc(q.msg || '') + '</span>';
-      return '<div class="q-row ' + q.status + (q.mod ? '' : ' nomod') + '">'
-        + (q.preview ? '<img class="q-th" src="' + q.preview + '" alt=""/>' : '<div class="q-th pdf">PDF</div>')
-        + '<div class="q-info"><div class="q-name">' + esc(q.file.name) + '</div><div class="q-meta">' + meta + '</div></div>'
-        + '<select class="q-mod" data-id="' + q.id + '"' + (uploading ? ' disabled' : '') + '>' + modOptions(q.mod) + '</select>'
-        + (uploading ? '' : '<button class="q-rm" data-id="' + q.id + '" title="移除">×</button>')
-        + '</div>';
-    }).join('');
-    // 涉及「素材力」等需要附加信息的事项，补一个输入框
-    UP_MODS.forEach(function (m) {
-      if (!m.extraField || !QUEUE.some(function (q) { return q.mod === m.key; })) return;
-      h += '<label class="field q-extra"><span class="label">' + esc(m.name) + ' · ' + esc(m.extraField.label)
-        + (m.extraField.required ? ' <span class="req">*</span>' : '') + '</span>'
-        + '<input class="rk-extra" data-mod="' + esc(m.key) + '" value="' + esc((state.extra || {})[m.key] || '')
-        + '" placeholder="' + esc(m.extraField.placeholder || '') + '"' + (uploading ? ' disabled' : '') + '/></label>';
-    });
-    $('#vQueue').innerHTML = h;
-    btn.disabled = uploading;
-    btn.textContent = uploading ? '上传中…' : '上传 ' + QUEUE.length + ' 个文件';
-  }
-
-  $('#vDrop').addEventListener('click', function () { if (!uploading) $('#vFile').click(); });
-  $('#vFile').addEventListener('change', function () { addFiles(this.files); this.value = ''; });
-  ['dragenter', 'dragover'].forEach(function (ev) {
-    $('#vDrop').addEventListener(ev, function (e) { e.preventDefault(); this.classList.add('over'); });
+    var btn = e.target.closest('.cu-btn');
+    if (!btn || btn.disabled || !readyFor(btn.dataset.mod)) return;
+    pickingMod = btn.dataset.mod;
+    $('#vFile').click();
   });
-  ['dragleave', 'drop'].forEach(function (ev) {
-    $('#vDrop').addEventListener(ev, function (e) { e.preventDefault(); this.classList.remove('over'); });
-  });
-  $('#vDrop').addEventListener('drop', function (e) {
-    if (!uploading && e.dataTransfer) addFiles(e.dataTransfer.files);
-  });
-  // 截图直接粘贴
-  document.addEventListener('paste', function (e) {
-    if (uploading || !e.clipboardData) return;
-    var fs = [];
-    Array.prototype.forEach.call(e.clipboardData.items || [], function (it) {
-      if (it.kind !== 'file') return;
-      var f = it.getAsFile();
-      if (!f) return;
-      if (/^image\//.test(f.type) && /^image\.\w+$/i.test(f.name || 'image.png')) {
-        var d = new Date();
-        f = new File([f], '截图-' + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds())
-          + '-' + (fs.length + 1) + '.' + (f.type.split('/')[1] || 'png'), { type: f.type });
-      }
-      fs.push(f);
-    });
-    if (!fs.length) return;
-    e.preventDefault();
-    addFiles(fs);
-    $('#vQueue').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  });
-
-  $('#vQueue').addEventListener('change', function (e) {
-    if (e.target.id === 'qAll') {
-      if (!e.target.value) return;
-      QUEUE.forEach(function (q) { q.mod = e.target.value; });
-      state.lastMod = e.target.value;
-    } else if (e.target.classList.contains('q-mod')) {
-      var q = QUEUE.filter(function (x) { return x.id === +e.target.dataset.id; })[0];
-      if (q) { q.mod = e.target.value; if (q.mod) state.lastMod = q.mod; }
-    } else {
-      return;
-    }
-    saveDraft();
-    renderQueue();
-  });
-  $('#vQueue').addEventListener('input', function (e) {
+  tbl.addEventListener('input', function (e) {
     if (!e.target.classList.contains('rk-extra')) return;
     state.extra = state.extra || {};
     state.extra[e.target.dataset.mod] = e.target.value;
     saveDraft();
   });
-  $('#vQueue').addEventListener('click', function (e) {
-    var b = e.target.closest('.q-rm');
-    if (!b) return;
-    QUEUE = QUEUE.filter(function (q) {
-      if (q.id === +b.dataset.id && q.preview) URL.revokeObjectURL(q.preview);
-      return q.id !== +b.dataset.id;
-    });
-    renderQueue();
+  tbl.addEventListener('dragover', function (e) {
+    var c = e.target.closest('.cell-up');
+    if (!c) return;
+    e.preventDefault();
+    c.classList.add('over');
+  });
+  tbl.addEventListener('dragleave', function (e) {
+    var c = e.target.closest('.cell-up');
+    if (c && !c.contains(e.relatedTarget)) c.classList.remove('over');
+  });
+  tbl.addEventListener('drop', function (e) {
+    var c = e.target.closest('.cell-up');
+    if (!c) return;
+    e.preventDefault();
+    c.classList.remove('over');
+    var key = c.dataset.mod;
+    if ((BUSY[key] || []).length) return;
+    if (e.dataTransfer && e.dataTransfer.files.length && readyFor(key)) uploadFiles(key, e.dataTransfer.files);
+  });
+  $('#vFile').addEventListener('change', function () {
+    var fs = Array.prototype.slice.call(this.files || []);
+    this.value = '';
+    if (pickingMod && fs.length) uploadFiles(pickingMod, fs);
   });
 
-  /* ---- 上传 ---- */
+  /* ---- 上传实现 ---- */
   function compressIfNeeded(file) {
     if (!/^image\//.test(file.type) || file.size <= 1048576 || /gif/i.test(file.type)) {
       return Promise.resolve(file);
@@ -422,9 +417,11 @@
     });
   }
 
+  /** 找该品牌的记录 issue；没有则建占位 issue（并发上传只建一个） */
   function findIssue(brand, create) {
     if (vIssueCache[brand]) return Promise.resolve(vIssueCache[brand]);
-    return GHUB.listByLabel(XC.label).then(function (arr) {
+    if (create && issuePromise[brand]) return issuePromise[brand];
+    var p = GHUB.listByLabel(XC.label).then(function (arr) {
       var hit = arr.filter(function (r) { return (r.brand || '').trim() === brand; })[0];
       if (hit) { vIssueCache[brand] = hit.__issue; return hit.__issue; }
       if (!create) return null;
@@ -437,151 +434,122 @@
         + '<!-- 以下为机器读取用，请勿修改 -->\n```json\n' + JSON.stringify(rec) + '\n```',
         [XC.label]).then(function (r) { vIssueCache[brand] = r.issue; return r.issue; });
     });
+    if (create) {
+      issuePromise[brand] = p;
+      p.catch(function () { delete issuePromise[brand]; });
+    }
+    return p;
   }
 
   function safeName(s) { return String(s || '').replace(/[\\/:*?"<>|#%\s]+/g, '-').slice(0, 40); }
 
-  function uploadOne(issueNo, brand, q) {
-    var mod = modBy(q.mod), f2;
-    q.status = 'uploading';
-    renderQueue();
-    return compressIfNeeded(q.file).then(function (f) {
+  function uploadOne(issueNo, brand, key, file) {
+    var mod = modBy(key), f2;
+    return compressIfNeeded(file).then(function (f) {
       f2 = f;
       return toBase64(f);
     }).then(function (b64) {
       var d = new Date();
       var ext = ((f2.name.match(/\.(\w+)$/) || [0, 'bin'])[1]).toLowerCase();
-      var path = 'uploads/exuan/' + safeName(brand) + '/' + mod.key + '-'
+      var path = 'uploads/exuan/' + safeName(brand) + '/' + key + '-'
         + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + pad(d.getHours()) + pad(d.getMinutes())
         + pad(d.getSeconds()) + '-' + Math.random().toString(36).slice(2, 6) + '.' + ext;
       return GHUB.uploadFile(path, b64);
     }).then(function (up) {
       var v = {
-        type: 'voucher', module: mod.key, moduleName: mod.name, brand: brand,
-        name: q.file.name, url: up.url, path: up.path, size: f2.size,
+        type: 'voucher', module: key, moduleName: mod.name, brand: brand,
+        name: file.name, url: up.url, path: up.path, size: f2.size,
         uploadedAt: new Date().toISOString(),
       };
       if (mod.extraField) {
         v.extra = {};
-        v.extra[mod.extraField.key] = String((state.extra || {})[mod.key] || '').trim();
+        v.extra[mod.extraField.key] = String((state.extra || {})[key] || '').trim();
       }
       return GHUB.addComment(issueNo, GHUB.voucherCommentBody(v)).then(function () { return v; });
     });
   }
 
-  function uploadAll() {
+  function uploadFiles(key, files) {
     var brand = state.brand.trim();
-    if (!brand) { alert('请先在最上方填写品牌名称'); $('#brand').focus(); return; }
-    if (!QUEUE.length) return;
-    var noMod = QUEUE.filter(function (q) { return !q.mod; }).length;
-    if (noMod) { alert('还有 ' + noMod + ' 个文件没选「对应排位事项」'); return; }
-    var missExtra = UP_MODS.filter(function (m) {
-      return m.extraField && m.extraField.required
-        && QUEUE.some(function (q) { return q.mod === m.key; })
-        && !String((state.extra || {})[m.key] || '').trim();
+    var maxB = (XC.voucher.maxMB || 5) * 1048576, valid = [], bad = [];
+    Array.prototype.forEach.call(files, function (f) {
+      var isImg = /^image\//.test(f.type);
+      var isPdf = f.type === 'application/pdf' || /\.pdf$/i.test(f.name);
+      if (!isImg && !isPdf) bad.push(f.name + '（仅支持图片 / PDF）');
+      else if (f.size > maxB) bad.push(f.name + '（超过 ' + (XC.voucher.maxMB || 5) + 'MB）');
+      else valid.push(f);
     });
-    if (missExtra.length) { alert('请填写「' + missExtra[0].name + ' · ' + missExtra[0].extraField.label + '」'); return; }
-    if (!GHUB.enabled()) { alert('当前未开通在线上传，请把凭证发给对接的腾讯销售。'); return; }
+    if (bad.length) alert('以下文件未上传：\n· ' + bad.join('\n· '));
+    if (!valid.length) return;
 
-    uploading = true;
-    renderQueue();
-    var ok = 0, bad = 0, total = QUEUE.length;
-    $('#vStatus').textContent = '准备上传…';
+    var items = valid.map(function (f) {
+      return { name: f.name, preview: /^image\//.test(f.type) ? URL.createObjectURL(f) : '' };
+    });
+    BUSY[key] = items.slice();
+    MSG[key] = null;
+    renderCell(key);
 
+    var ok = 0, fail = 0, errs = [];
     findIssue(brand, true).then(function (no) {
       var chain = Promise.resolve();
-      QUEUE.slice().forEach(function (q) {
+      valid.forEach(function (f, i) {
         chain = chain.then(function () {
-          $('#vStatus').textContent = '正在上传 ' + (ok + bad + 1) + '/' + total + '…';
-          return uploadOne(no, brand, q).then(function (v) {
+          return uploadOne(no, brand, key, f).then(function (v) {
             ok++;
-            v.__local = q.preview;   // 刚传的先用本地预览，避免 CDN 延迟看不到图
+            v.__local = items[i].preview;   // 刚传的先用本地预览，避免 CDN 延迟看不到图
             MINE.push(v);
-            QUEUE = QUEUE.filter(function (x) { return x !== q; });
-            renderQueue();
-            renderMine();
           }, function (e) {
-            bad++;
-            q.status = 'fail';
-            q.msg = e.message;
-            renderQueue();
+            fail++;
+            errs.push(f.name + '：' + e.message);
+          }).then(function () {
+            BUSY[key] = (BUSY[key] || []).filter(function (x) { return x !== items[i]; });
+            renderCell(key);
           });
         });
       });
       return chain;
     }).catch(function (e) {
-      bad = total - ok;
-      alert('上传失败：' + e.message);
+      fail = valid.length - ok;
+      errs.push(e.message);
     }).then(function () {
-      uploading = false;
-      QUEUE.forEach(function (q) { if (q.status === 'uploading') q.status = 'wait'; });
-      renderQueue();
-      $('#vStatus').innerHTML = (ok ? '<span style="color:#06a552">✓ 成功上传 ' + ok + ' 个</span>' : '')
-        + (bad ? (ok ? '，' : '') + '<span style="color:#d4380d">' + bad + ' 个失败，可重新点上传</span>' : '')
-        + (ok ? '，等待官方校验' : '');
+      BUSY[key] = [];
+      MSG[key] = fail
+        ? { cls: 'bad', text: (ok ? '✓ 成功 ' + ok + ' 张，' : '') + '✗ 失败 ' + fail + ' 张，可重新上传<br/>' + esc(errs.slice(0, 2).join('；')) }
+        : { cls: 'ok', text: '✓ 成功上传 ' + ok + ' 张，等待官方校验' };
+      renderAllCells();
     });
   }
 
-  /* ---- 我已上传的 ---- */
-  function renderMine() {
-    var box = $('#vMine');
-    if (!state.brand.trim()) {
-      $('#mineCount').textContent = '';
-      box.innerHTML = '<div class="empty-tip">填写品牌名称后，这里会显示该品牌已上传的全部凭证</div>';
-      return;
-    }
-    $('#mineCount').textContent = MINE.length ? '共 ' + MINE.length + ' 个文件' : '';
-    box.innerHTML = UP_MODS.map(function (m) {
-      var list = MINE.filter(function (v) { return v.module === m.key; })
-        .sort(function (a, b) { return String(a.uploadedAt).localeCompare(String(b.uploadedAt)); });
-      var cnt = list.length
-        ? '<span class="mine-n ok">' + list.length + ' 个' + (m.max ? ' / 最多 ' + m.max + ' 场' : '') + '</span>'
-        : '<span class="mine-n">未上传</span>';
-      var ext = m.extraField && (state.extra || {})[m.key]
-        ? '<i>' + esc(m.extraField.label) + '：' + esc(state.extra[m.key]) + '</i>' : '';
-      return '<div class="mine-mod' + (list.length ? '' : ' empty') + '"><div class="mine-head"><b>' + esc(m.name) + '</b>'
-        + cnt + ext + '</div>'
-        + (list.length ? '<div class="mine-grid">' + list.map(function (v) {
-          var img = isImgName(v.path || v.name);
-          return '<a class="mine-it" href="' + esc(v.url) + '" target="_blank" title="' + esc(v.name) + '">'
-            + (img ? '<img src="' + esc(v.__local || v.url) + '" loading="lazy" alt=""/>' : '<div class="mine-pdf">PDF</div>')
-            + '<span class="mine-nm">' + esc(v.name) + '</span><span class="mine-t">' + esc(fmtT(v.uploadedAt)) + '</span></a>';
-        }).join('') + '</div>' : '')
-        + '</div>';
-    }).join('');
-  }
-
+  /* ---- 读取该品牌已上传的凭证 ---- */
   function loadMine() {
     var brand = state.brand.trim();
     var local = MINE.filter(function (v) { return v.__local && v.brand === brand; });
     MINE = local;
-    renderMine();
+    MSG = {};
+    renderAllCells();
     if (!brand || !GHUB.readable()) return;
-    $('#mineCount').textContent = '查询中…';
-    findIssue(brand, false).then(function (no) {
-      if (!no) { renderMine(); return; }
-      return GHUB.listComments(no).then(function (cs) {
-        var got = GHUB.parseVouchers(cs);
-        var paths = {};
-        got.forEach(function (v) { paths[v.path] = 1; });
-        MINE = got.concat(local.filter(function (v) { return !paths[v.path]; }));
-        got.forEach(function (v) {
-          var ev = v.extra && v.extra[Object.keys(v.extra)[0]];
-          if (ev) { state.extra = state.extra || {}; state.extra[v.module] = ev; }
-        });
-        renderMine();
+    $('#vStatus').textContent = '查询「' + brand + '」已上传的凭证…';
+    GHUB.listByLabel(XC.label).then(function (arr) {
+      var mine = arr.filter(function (r) { return (r.brand || '').trim() === brand; });
+      if (mine.length) vIssueCache[brand] = mine[0].__issue;
+      return Promise.all(mine.map(function (r) {
+        return GHUB.listComments(r.__issue).then(GHUB.parseVouchers).catch(function () { return []; });
+      }));
+    }).then(function (groups) {
+      if (state.brand.trim() !== brand) return;   // 期间改了品牌名，丢弃旧结果
+      var got = [].concat.apply([], groups || []);
+      var paths = {};
+      got.forEach(function (v) {
+        paths[v.path] = 1;
+        var ev = v.extra && v.extra[Object.keys(v.extra)[0]];
+        if (ev) { state.extra = state.extra || {}; state.extra[v.module] = ev; }
       });
-    }).catch(function () { renderMine(); });
+      MINE = got.concat(local.filter(function (v) { return !paths[v.path]; }));
+      renderRules();   // 重新渲染以回填账户ID
+    }).catch(function () { renderAllCells(); });
   }
 
-  $('#rkTable').addEventListener('click', function (e) {
-    var img = e.target.closest('img[data-big]');
-    if (!img) return;
-    $('#imgBig').src = img.dataset.big;
-    $('#imgMask').classList.add('show');
-  });
   $('#imgMask').addEventListener('click', function () { this.classList.remove('show'); });
-  $('#btnUpload').addEventListener('click', uploadAll);
   $('#btnMine').addEventListener('click', loadMine);
 
   /* ================= 事件 & init ================= */
@@ -608,7 +576,5 @@
   $('#remark').value = state.remark;
   renderQuestions();
   renderRules();
-  renderQueue();
-  renderMine();
   if (state.brand) loadMine();
 })();
