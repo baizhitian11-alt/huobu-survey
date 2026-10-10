@@ -66,8 +66,6 @@
   $('#voucherTitle').textContent = XC.voucher.title || '扶持凭证上传';
   $('#voucherDesc').textContent = XC.voucher.desc || '';
   $('#vFile').accept = XC.voucher.accept || '';
-  $('#vNoteLabel').textContent = XC.voucher.noteLabel || '凭证说明';
-  $('#vNote').placeholder = XC.voucher.notePlaceholder || '';
 
   /* ================= 客户名称 datalist ================= */
   var dl = BRANDS.map(function (b) { return '<option value="' + esc(b) + '"></option>'; }).join('');
@@ -294,9 +292,13 @@
     });
   }
 
-  /* ================= 凭证上传 ================= */
-  var vFiles = [];        // 待上传队列 [{file, status, msg, url}]
+  /* ================= 凭证上传：一个模块一张 ================= */
+  var VMODS = XC.voucher.modules || [];
+  /** 每个模块独立状态：empty / pending / uploading / done / fail */
+  var mState = {};
+  VMODS.forEach(function (m) { mState[m.key] = { status: 'empty' }; });
   var vIssueCache = {};   // brand -> issueNumber
+  var pickingKey = null;  // 当前正在为哪个模块选文件
 
   function safeName(s) {
     return String(s || '').replace(/[\\/:*?"<>|\s]+/g, '-').slice(0, 60);
@@ -308,60 +310,85 @@
       + '-' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds());
   }
 
-  function addFiles(list) {
-    var maxB = (XC.voucher.maxMB || 5) * 1024 * 1024;
-    Array.prototype.forEach.call(list, function (f) {
-      var isImg = /^image\//.test(f.type);
-      var isPdf = f.type === 'application/pdf' || /\.pdf$/i.test(f.name);
-      if (!isImg && !isPdf) {
-        vFiles.push({ file: f, status: 'fail', msg: '仅支持图片或 PDF' });
-        return;
-      }
-      if (f.size > maxB) {
-        vFiles.push({ file: f, status: 'fail', msg: '超过 5MB 限制' });
-        return;
-      }
-      vFiles.push({ file: f, status: 'pending' });
-    });
-    renderVList();
-  }
+  function renderVModules() {
+    $('#vModules').innerHTML = VMODS.map(function (m) {
+      var st = mState[m.key];
+      var head = '<div class="vm-head"><b>' + esc(m.name) + '</b>'
+        + (m.required ? '<span class="vm-req">必传</span>' : '<span class="vm-opt">选传</span>');
 
-  function renderVList() {
-    if (!vFiles.length) { $('#vList').innerHTML = ''; return; }
-    $('#vList').innerHTML = vFiles.map(function (it, i) {
-      var kb = Math.round(it.file.size / 1024);
-      var st = it.status === 'pending' ? '<span class="vs">待上传</span>'
-        : it.status === 'uploading' ? '<span class="vs doing">上传中…</span>'
-        : it.status === 'done' ? '<span class="vs ok">✓ 已上传</span>'
-        : '<span class="vs bad">✗ ' + esc(it.msg || '失败') + '</span>';
-      var link = it.url ? ' <a href="' + esc(it.url) + '" target="_blank">查看</a>' : '';
-      var del = (it.status === 'pending' || it.status === 'fail')
-        ? ' <a href="javascript:;" class="vrm" data-i="' + i + '">移除</a>' : '';
-      return '<div class="vitem"><span class="vname">' + esc(it.file.name)
-        + ' <i>' + kb + 'KB</i></span>' + st + link + del + '</div>';
+      var body = '';
+      if (st.status === 'empty') {
+        head += '<span class="vs">未上传</span></div>';
+        body = '<div class="vm-slot" data-key="' + esc(m.key) + '">'
+          + '<span class="vm-plus">＋</span> 选择这一张凭证<br/>'
+          + '<span class="vdrop-sub">截图图片 / PDF，≤5MB</span></div>';
+      } else if (st.status === 'pending') {
+        head += '<span class="vs doing">待确认</span></div>';
+        body = '<div class="vm-file">'
+          + '<span class="vname">' + esc(st.file.name) + ' <i>'
+          + Math.round(st.file.size / 1024) + 'KB</i></span></div>'
+          + '<div class="vm-btns">'
+          + '<button class="btn primary sm" data-act="ok" data-key="' + esc(m.key) + '">确认上传</button>'
+          + '<button class="btn ghost sm" data-act="cancel" data-key="' + esc(m.key) + '">换一张</button>'
+          + '</div>';
+      } else if (st.status === 'uploading') {
+        head += '<span class="vs doing">上传中…</span></div>';
+        body = '<div class="vm-file"><span class="vname">' + esc(st.name || '') + '</span></div>';
+      } else if (st.status === 'done') {
+        head += '<span class="vs ok">✓ 已上传</span></div>';
+        body = '<div class="vm-file">'
+          + '<a href="' + esc(st.url) + '" target="_blank">' + esc(st.name || '查看凭证') + '</a>'
+          + (st.time ? ' <i>' + esc(st.time) + '</i>' : '')
+          + '</div>'
+          + '<div class="vm-btns">'
+          + '<button class="btn ghost sm" data-act="re" data-key="' + esc(m.key) + '">重新上传</button>'
+          + '</div>';
+      } else {  // fail
+        head += '<span class="vs bad">✗ 上传失败</span></div>';
+        body = '<div class="vm-file"><span class="vname" style="color:#d4380d">'
+          + esc(st.msg || '') + '</span></div>'
+          + '<div class="vm-btns">'
+          + '<button class="btn primary sm" data-act="retry" data-key="' + esc(m.key) + '">重试</button>'
+          + '<button class="btn ghost sm" data-act="cancel" data-key="' + esc(m.key) + '">换一张</button>'
+          + '</div>';
+      }
+
+      return '<div class="vm-card">' + head
+        + (m.desc ? '<div class="vm-desc">' + esc(m.desc) + '</div>' : '')
+        + body + '</div>';
     }).join('');
   }
 
-  $('#vList').addEventListener('click', function (e) {
-    var rm = e.target.closest('.vrm');
-    if (!rm) return;
-    vFiles.splice(+rm.dataset.i, 1);
-    renderVList();
+  /* 模块卡片交互（事件委托） */
+  $('#vModules').addEventListener('click', function (e) {
+    var slot = e.target.closest('.vm-slot');
+    if (slot) {
+      pickingKey = slot.dataset.key;
+      $('#vFile').click();
+      return;
+    }
+    var btn = e.target.closest('button[data-act]');
+    if (!btn) return;
+    var key = btn.dataset.key, act = btn.dataset.act;
+    if (act === 'ok' || act === 'retry') uploadModule(key);
+    else if (act === 'cancel') { mState[key] = { status: 'empty' }; renderVModules(); }
+    else if (act === 're') { pickingKey = key; $('#vFile').click(); }
   });
 
-  $('#vDrop').addEventListener('click', function () { $('#vFile').click(); });
+  /* 选中文件 → 进入待确认（一个模块只留一张） */
   $('#vFile').addEventListener('change', function () {
-    addFiles(this.files);
+    var f = this.files && this.files[0];
     this.value = '';
-  });
-  ['dragover', 'dragenter'].forEach(function (ev) {
-    $('#vDrop').addEventListener(ev, function (e) { e.preventDefault(); this.classList.add('over'); });
-  });
-  ['dragleave', 'drop'].forEach(function (ev) {
-    $('#vDrop').addEventListener(ev, function (e) { e.preventDefault(); this.classList.remove('over'); });
-  });
-  $('#vDrop').addEventListener('drop', function (e) {
-    if (e.dataTransfer && e.dataTransfer.files) addFiles(e.dataTransfer.files);
+    if (!f || !pickingKey) return;
+
+    var isImg = /^image\//.test(f.type);
+    var isPdf = f.type === 'application/pdf' || /\.pdf$/i.test(f.name);
+    var maxB = (XC.voucher.maxMB || 5) * 1024 * 1024;
+    if (!isImg && !isPdf) { alert('仅支持图片或 PDF 文件'); return; }
+    if (f.size > maxB) { alert('文件超过 ' + (XC.voucher.maxMB || 5) + 'MB 限制'); return; }
+
+    mState[pickingKey] = { status: 'pending', file: f };
+    renderVModules();
   });
 
   /** 图片压缩：>1MB 的图压到最长边 1600 / jpeg 0.85 */
@@ -427,92 +454,8 @@
     });
   }
 
-  function uploadAll() {
-    var brand = $('#vBrand').value.trim();
-    if (!brand) { alert('请先填写客户名称'); $('#vBrand').focus(); return; }
-    var pend = vFiles.filter(function (f) { return f.status === 'pending'; });
-    if (!pend.length) { alert('请先选择凭证文件'); return; }
-    if (!GHUB.enabled()) {
-      alert('当前未配置在线后端，无法上传凭证。\n请联系运营同学线下回传。');
-      return;
-    }
-
-    var btn = $('#btnUpload');
-    btn.disabled = true;
-    $('#vStatus').textContent = '正在定位报名记录…';
-
-    var issueNo;
-    findOrCreateIssue(brand).then(function (no) {
-      issueNo = no;
-      var chain = Promise.resolve();
-      pend.forEach(function (it) {
-        chain = chain.then(function () {
-          it.status = 'uploading';
-          renderVList();
-          return compressIfNeeded(it.file).then(function (f) {
-            return toBase64(f).then(function (b64) {
-              var ext = (f.name.match(/\.(\w+)$/) || [0, 'bin'])[1].toLowerCase();
-              var path = 'uploads/exuan/' + safeName(brand)
-                + '/' + ts() + '-' + Math.random().toString(36).slice(2, 6) + '.' + ext;
-              return GHUB.uploadFile(path, b64).then(function (up) {
-                var v = {
-                  type: 'voucher',
-                  brand: brand,
-                  name: f.name,
-                  url: up.url,
-                  path: up.path,
-                  size: f.size,
-                  note: $('#vNote').value.trim(),
-                  uploadedAt: new Date().toISOString(),
-                };
-                return GHUB.addComment(issueNo, GHUB.voucherCommentBody(v)).then(function () {
-                  it.status = 'done';
-                  it.url = up.url;
-                  renderVList();
-                });
-              });
-            });
-          }).catch(function (e) {
-            it.status = 'fail';
-            it.msg = e.message;
-            renderVList();
-          });
-        });
-      });
-      return chain;
-    }).then(function () {
-      var ok = vFiles.filter(function (f) { return f.status === 'done'; }).length;
-      var bad = vFiles.filter(function (f) { return f.status === 'fail'; }).length;
-      $('#vStatus').innerHTML = '本次上传完成：成功 <b>' + ok + '</b>'
-        + (bad ? '，失败 <b style="color:#d4380d">' + bad + '</b>（可点移除后重试）' : '')
-        + '。运营审核通过后给予进一步扶持。';
-      loadMyVouchers(brand);
-    }).catch(function (e) {
-      $('#vStatus').textContent = '上传失败：' + e.message;
-    }).finally(function () {
-      btn.disabled = false;
-    });
-  }
-
-  /** 展示该客户已上传的凭证 */
-  function loadMyVouchers(brand) {
-    if (!GHUB.readable() || !brand) return;
-    $('#vStatus').textContent = '查询已传凭证…';
-    findOrCreateQuiet(brand).then(function (no) {
-      if (!no) { $('#vStatus').textContent = ''; return; }
-      return GHUB.listComments(no).then(function (cs) {
-        var vs = GHUB.parseVouchers(cs);
-        if (!vs.length) { $('#vStatus').textContent = '该客户暂未上传过凭证'; return; }
-        $('#vStatus').innerHTML = '该客户已上传 <b>' + vs.length + '</b> 份凭证：'
-          + vs.map(function (v, i) {
-            return '<a href="' + esc(v.url) + '" target="_blank">' + (i + 1) + '. ' + esc(v.name) + '</a>';
-          }).join('　');
-      });
-    }).catch(function () { $('#vStatus').textContent = ''; });
-  }
-
   /** 只查不建（避免客户误触发就产生空 issue） */
-  function findOrCreateQuiet(brand) {
+  function findIssueQuiet(brand) {
     if (vIssueCache[brand]) return Promise.resolve(vIssueCache[brand]);
     return GHUB.listByLabel(XC.label).then(function (arr) {
       for (var i = 0; i < arr.length; i++) {
@@ -523,6 +466,103 @@
       }
       return null;
     });
+  }
+
+  /** 上传某一个模块的那一张凭证 */
+  function uploadModule(key) {
+    var brand = $('#vBrand').value.trim();
+    if (!brand) { alert('请先填写客户名称'); $('#vBrand').focus(); return; }
+    if (!GHUB.enabled()) {
+      alert('当前未配置在线后端，无法上传凭证。\n请联系运营同学线下回传。');
+      return;
+    }
+    var st = mState[key];
+    if (!st || !st.file) return;
+    var mod = null;
+    VMODS.forEach(function (m) { if (m.key === key) mod = m; });
+
+    st.status = 'uploading';
+    st.name = st.file.name;
+    renderVModules();
+    $('#vStatus').textContent = '正在上传「' + (mod ? mod.name : key) + '」…';
+
+    var issueNo, upUrl, upPath, finalFile;
+    findOrCreateIssue(brand).then(function (no) {
+      issueNo = no;
+      return compressIfNeeded(st.file);
+    }).then(function (f) {
+      finalFile = f;
+      return toBase64(f);
+    }).then(function (b64) {
+      var ext = (finalFile.name.match(/\.(\w+)$/) || [0, 'bin'])[1].toLowerCase();
+      var path = 'uploads/exuan/' + safeName(brand) + '/' + key
+        + '-' + ts() + '-' + Math.random().toString(36).slice(2, 6) + '.' + ext;
+      return GHUB.uploadFile(path, b64);
+    }).then(function (up) {
+      upUrl = up.url;
+      upPath = up.path;
+      var v = {
+        type: 'voucher',
+        module: key,
+        moduleName: mod ? mod.name : key,
+        brand: brand,
+        name: finalFile.name,
+        url: up.url,
+        path: up.path,
+        size: finalFile.size,
+        uploadedAt: new Date().toISOString(),
+      };
+      return GHUB.addComment(issueNo, GHUB.voucherCommentBody(v));
+    }).then(function () {
+      mState[key] = {
+        status: 'done', url: upUrl, path: upPath,
+        name: finalFile.name, time: ts(),
+      };
+      renderVModules();
+      $('#vStatus').innerHTML = '「' + esc(mod ? mod.name : key) + '」上传成功，'
+        + '<a href="' + esc(upUrl) + '" target="_blank">查看凭证</a>。审核通过后给予进一步扶持。';
+    }).catch(function (e) {
+      mState[key] = { status: 'fail', file: st.file, msg: e.message };
+      renderVModules();
+      $('#vStatus').textContent = '上传失败：' + e.message;
+    });
+  }
+
+  /** 展示该客户各模块已上传的凭证（按模块归位，最新一张生效） */
+  function loadMyVouchers(brand) {
+    if (!GHUB.readable() || !brand) return;
+    $('#vStatus').textContent = '查询已传凭证…';
+    findIssueQuiet(brand).then(function (no) {
+      if (!no) { $('#vStatus').textContent = ''; return; }
+      return GHUB.listComments(no).then(function (cs) {
+        var vs = GHUB.parseVouchers(cs);
+        var latest = {};   // module -> 最新一份
+        vs.forEach(function (v) {
+          var k = v.module || '__unknown';
+          if (!latest[k] || String(v.uploadedAt) > String(latest[k].uploadedAt)) latest[k] = v;
+        });
+        var filled = 0;
+        VMODS.forEach(function (m) {
+          var v = latest[m.key];
+          if (v && (!mState[m.key] || mState[m.key].status === 'empty')) {
+            mState[m.key] = { status: 'done', url: v.url, path: v.path, name: v.name, time: fmtT(v.uploadedAt) };
+          }
+          if (v) filled++;
+        });
+        renderVModules();
+        $('#vStatus').innerHTML = filled
+          ? '该客户已上传 <b>' + filled + '</b> / ' + VMODS.length + ' 个模块的凭证'
+          : '该客户暂未上传过凭证';
+      });
+    }).catch(function () { $('#vStatus').textContent = ''; });
+  }
+
+  function fmtT(iso) {
+    if (!iso) return '';
+    var d = new Date(iso);
+    if (isNaN(d)) return '';
+    var p = function (n) { return (n < 10 ? '0' : '') + n; };
+    return p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
   }
 
   var vBrandTimer = null;
@@ -546,7 +586,6 @@
   });
 
   $('#btnSubmit').addEventListener('click', submit);
-  $('#btnUpload').addEventListener('click', uploadAll);
   $('#btnClear').addEventListener('click', function () {
     if (!confirm('清空上半部分所有填写内容？（不影响已上传的凭证）')) return;
     state = { brand: '', answers: {}, remark: '' };
@@ -563,5 +602,6 @@
   $('#vBrand').value = state.brand || '';
   $('#remark').value = state.remark || '';
   renderQuestions();
+  renderVModules();
   renderConfirm();
 })();

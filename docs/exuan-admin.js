@@ -77,21 +77,36 @@
     });
   }
 
+  /** 每个模块取最新一份凭证 */
+  function latestByModule(rec) {
+    var out = {};
+    (rec.vouchers || []).forEach(function (v) {
+      var k = v.module || '__unknown';
+      if (!out[k] || String(v.uploadedAt) > String(out[k].uploadedAt)) out[k] = v;
+    });
+    return out;
+  }
+
   /* ---------- 渲染 ---------- */
   function render() {
     var rows = [];
     EX_LIST.slice().reverse().forEach(function (r) {
-      var vs = r.vouchers || [];
+      var latest = latestByModule(r);
+      var vCount = Object.keys(latest).length;
       var vHtml;
-      if (!vs.length) {
+      if (!vCount) {
         vHtml = '<span style="color:#b3bac9">未上传</span>';
       } else {
-        vHtml = '<details><summary><b style="color:#06a552">' + vs.length + ' 份</b></summary>'
-          + vs.map(function (v) {
-            return '<div style="padding:4px 0">· <a href="' + esc(v.url) + '" target="_blank">'
-              + esc(v.name) + '</a> <span style="color:#9aa3b5;font-size:12px">'
-              + esc(fmtT(v.uploadedAt)) + (v.note ? ' · ' + esc(v.note) : '') + '</span></div>';
-          }).join('') + '</details>';
+        // 一个模块一行：✓ 看链接 / ✗ 缺
+        vHtml = XC.voucher.modules.map(function (m) {
+          var v = latest[m.key];
+          return '<div class="vm-line">'
+            + (v
+              ? '<span class="ok">✓</span> <a href="' + esc(v.url) + '" target="_blank">'
+                + esc(m.name) + '</a> <i>' + esc(fmtT(v.uploadedAt)) + '</i>'
+              : '<span class="miss">✗</span> <span class="miss">' + esc(m.name) + '</span>')
+            + '</div>';
+        }).join('');
       }
 
       var summary = r.voucherOnly
@@ -122,7 +137,7 @@
     if (!EX_LIST.length) return alert('请先拉取鹅选数据');
     var head1 = ['编号', '提交时间', '是否逾期', '客户名称', '类型'];
     XC.questions.forEach(function (q) { head1.push(q.title); });
-    head1.push('备注', '凭证数', 'Issue');
+    head1.push('备注', '已传凭证模块', 'Issue');
 
     var rows1 = EX_LIST.map(function (r) {
       var row = [
@@ -130,18 +145,35 @@
         r.voucherOnly ? '仅传凭证' : '活动报名',
       ];
       XC.questions.forEach(function (q) { row.push(answerText(r, q)); });
-      row.push(r.remark || '', (r.vouchers || []).length, r.__issueUrl || '');
+      row.push(r.remark || '',
+        Object.keys(latestByModule(r)).length + '/' + XC.voucher.modules.length,
+        r.__issueUrl || '');
       return row;
     });
 
-    var head2 = ['客户名称', '文件名', '链接', '大小(KB)', '说明', '上传时间', 'Issue'];
-    var rows2 = [];
+    /* Sheet2：凭证透视 —— 一行一个客户，一列一个模块，格子里是凭证链接 */
+    var head2 = ['客户名称', '是否逾期'].concat(XC.voucher.modules.map(function (m) { return m.name; })).concat(['已传模块数', 'Issue']);
+    var rows2 = EX_LIST.map(function (r) {
+      var latest = latestByModule(r);
+      var cnt = 0;
+      var row = [r.brand || '', r.late ? '逾期' : '按时'];
+      XC.voucher.modules.forEach(function (m) {
+        var v = latest[m.key];
+        if (v) cnt++;
+        row.push(v ? v.url : '');
+      });
+      row.push(cnt + '/' + XC.voucher.modules.length, r.__issueUrl || '');
+      return row;
+    });
+
+    /* Sheet3：凭证上传明细（含历史版本） */
+    var head3 = ['客户名称', '凭证模块', '文件名', '链接', '大小(KB)', '上传时间', 'Issue'];
+    var rows3 = [];
     EX_LIST.forEach(function (r) {
       (r.vouchers || []).forEach(function (v) {
-        rows2.push([
-          r.brand || v.brand || '', v.name || '', v.url || '',
-          v.size ? Math.round(v.size / 1024) : '', v.note || '', fmtT(v.uploadedAt),
-          r.__issueUrl || '',
+        rows3.push([
+          r.brand || v.brand || '', v.moduleName || v.module || '', v.name || '', v.url || '',
+          v.size ? Math.round(v.size / 1024) : '', fmtT(v.uploadedAt), r.__issueUrl || '',
         ]);
       });
     });
@@ -154,7 +186,12 @@
           .concat(XC.questions.map(function () { return 26; }))
           .concat([20, 8, 40]),
       },
-      { name: '凭证清单', rows: [head2].concat(rows2), cols: [14, 30, 60, 10, 24, 15, 40] },
+      {
+        name: '凭证透视',
+        rows: [head2].concat(rows2),
+        cols: [14, 9].concat(XC.voucher.modules.map(function () { return 50; })).concat([11, 40]),
+      },
+      { name: '凭证明细', rows: [head3].concat(rows3), cols: [14, 22, 28, 55, 10, 15, 40] },
     ], '鹅选美妆节_' + EX_LIST.length + '份_' + new Date().toISOString().slice(0, 10) + '.xlsx');
   }
 
