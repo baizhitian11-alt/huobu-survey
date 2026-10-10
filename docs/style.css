@@ -611,3 +611,67 @@ table.xls td.empty { background: #fcfcfd; }
   .rk-body { grid-template-columns: 1fr; }
   .rk-std { border-right: none; border-bottom: 1px dashed #efe3ea; }
 }
+
+/* ==== 鹅选 v3：规则表 + 单入口多张上传 + 我已上传 ==== */
+.rk-tbl td { vertical-align: top; font-size: 13px; }
+.rk-ul { margin: 0; padding-left: 16px; line-height: 1.75; }
+.rk-sc { color: #d4380d; font-weight: 600; white-space: nowrap; }
+.rk-gov-s { color: #2b6cff; font-weight: 600; }
+.rk-tbl .rk-ex { margin-top: 6px; }
+.rk-tbl .rk-ex img { width: 64px; height: 44px; }
+
+.up-box, .mine-box { margin-top: 18px; border: 1px solid #ecdde6; border-radius: 12px; padding: 14px 16px; background: #fffdfe; }
+.mine-box { background: #fafbfd; border-color: #e6ebf5; }
+.up-title { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 650; color: #2b3348; margin-bottom: 10px; }
+.up-title span { font-size: 12px; font-weight: 400; color: #9aa3b5; }
+.up-box .vdrop:hover, .up-box .vdrop.over { border-color: #c0438c; background: #fdf3f8; }
+.up-box .vdrop-icon { color: #c0438c; background: #fbe7f1; }
+
+.q-bar { margin: 12px 0 6px; font-size: 13px; color: #45506b; }
+.q-bar select, .q-mod {
+  padding: 6px 8px; border-radius: 8px; border: 1px solid #dbe1ee; font-size: 13px; background: #fff; max-width: 100%;
+}
+.q-row {
+  display: flex; align-items: center; gap: 10px; padding: 8px 10px; margin-top: 6px;
+  border: 1px solid #edf0f7; border-radius: 10px; background: #fff;
+}
+.q-row.nomod .q-mod { border-color: #ffa39e; background: #fff7f6; }
+.q-row.uploading { background: #f3f7ff; border-color: #adc6ff; }
+.q-row.fail { background: #fff7f6; border-color: #ffccc7; }
+.q-th { width: 48px; height: 48px; object-fit: cover; border-radius: 6px; flex: 0 0 48px; background: #f2f4f9; }
+.q-th.pdf, .mine-pdf {
+  display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;
+  color: #d4380d; background: #fff1f0;
+}
+.q-info { flex: 1; min-width: 0; }
+.q-name { font-size: 13px; color: #2b3348; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.q-meta { font-size: 11.5px; color: #9aa3b5; margin-top: 2px; }
+.q-meta .doing { color: #2b6cff; } .q-meta .bad { color: #d4380d; }
+.q-mod { flex: 0 0 300px; }
+.q-rm { border: none; background: none; font-size: 18px; color: #b3bac9; cursor: pointer; padding: 0 4px; }
+.q-rm:hover { color: #d4380d; }
+.q-extra { margin-top: 10px; max-width: 520px; }
+
+.mine-mod { padding: 10px 0; border-bottom: 1px dashed #e6ebf5; }
+.mine-mod:last-child { border-bottom: none; }
+.mine-mod.empty .mine-head b { color: #9aa3b5; }
+.mine-head { display: flex; align-items: center; gap: 10px; font-size: 13.5px; }
+.mine-head i { font-style: normal; font-size: 12px; color: #7a8399; }
+.mine-n { font-size: 12px; color: #b3bac9; }
+.mine-n.ok { color: #06a552; font-weight: 600; }
+.mine-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; margin-top: 8px; }
+.mine-it {
+  display: flex; flex-direction: column; text-decoration: none; border: 1px solid #e6ebf5;
+  border-radius: 8px; overflow: hidden; background: #fff; transition: .15s;
+}
+.mine-it:hover { border-color: #c0438c; box-shadow: 0 2px 8px rgba(192,67,140,.12); }
+.mine-it img, .mine-pdf { width: 100%; height: 74px; object-fit: cover; background: #f2f4f9; }
+.mine-nm { font-size: 11px; color: #45506b; padding: 4px 6px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mine-t { font-size: 10.5px; color: #9aa3b5; padding: 0 6px 5px; }
+
+@media (max-width: 720px) {
+  .q-row { flex-wrap: wrap; }
+  .q-mod { flex: 1 1 100%; }
+}
+.q-bar select { width: auto; min-width: 180px; display: inline-block; margin-left: 4px; }
+.q-mod { flex: 0 0 200px; width: 200px; }

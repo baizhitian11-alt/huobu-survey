@@ -20,7 +20,7 @@
   };
   var UP_MODS = XC.voucher.modules.filter(function (m) { return !m.noUpload; });
 
-  /** BRANDS: [{ brand, plan(最新报规划), planCount, issues:[...], vouchers:{ 'mod#i': v }, history:[v...] }] */
+  /** BRANDS: [{ brand, plan(最新报规划), planCount, issues:[...], vouchers:{ module: [v...] }, history:[v...] }] */
   var BRANDS = [];
 
   function answerText(q, v) {
@@ -58,9 +58,7 @@
         }
         (r.vouchers || []).forEach(function (v) {
           g.history.push(v);
-          if (v.slot === undefined) return;
-          var k = v.module + '#' + v.slot;
-          if (!g.vouchers[k] || String(v.uploadedAt) > String(g.vouchers[k].uploadedAt)) g.vouchers[k] = v;
+          (g.vouchers[v.module] = g.vouchers[v.module] || []).push(v);
           if (v.extra) Object.keys(v.extra).forEach(function (ek) { if (v.extra[ek]) g.extra[v.module] = v.extra[ek]; });
         });
       });
@@ -70,7 +68,7 @@
         return String(tb).localeCompare(String(ta));
       });
       render();
-      var vc = BRANDS.reduce(function (n, g) { return n + Object.keys(g.vouchers).length; }, 0);
+      var vc = BRANDS.reduce(function (n, g) { return n + g.history.length; }, 0);
       $('#exStatus').textContent = BRANDS.length + ' 个品牌 · 报规划 '
         + BRANDS.filter(function (g) { return g.plan; }).length + ' 份 · 凭证 ' + vc + ' 张 · '
         + new Date().toLocaleTimeString('zh-CN');
@@ -86,16 +84,14 @@
   function render() {
     var plans = BRANDS.filter(function (g) { return g.plan; });
     var late = plans.filter(function (g) { return g.plan.late; }).length;
-    var withV = BRANDS.filter(function (g) { return Object.keys(g.vouchers).length; }).length;
+    var withV = BRANDS.filter(function (g) { return g.history.length; }).length;
     var cell = function (k, v, cls) {
       return '<div class="stat"><div class="v' + (cls ? ' ' + cls : '') + '">' + v + '</div><div class="k">' + esc(k) + '</div></div>';
     };
     var stats = [cell('品牌数', BRANDS.length), cell('已报规划', plans.length, 'ok'),
       cell('逾期提交', late, late ? 'warn' : ''), cell('已传凭证品牌', withV, 'ok')];
     UP_MODS.forEach(function (m) {
-      stats.push(cell(m.name, BRANDS.filter(function (g) {
-        return m.slots.some(function (_, i) { return g.vouchers[m.key + '#' + i]; });
-      }).length));
+      stats.push(cell(m.name + '·已传品牌', BRANDS.filter(function (g) { return (g.vouchers[m.key] || []).length; }).length));
     });
     $('#exStats').innerHTML = stats.join('');
 
@@ -110,15 +106,17 @@
         : '<span style="color:#c1c8d6">未报规划</span>';
 
       var vCell = UP_MODS.map(function (m) {
-        var got = m.slots.map(function (name, i) { return g.vouchers[m.key + '#' + i]; });
-        var n = got.filter(Boolean).length;
+        var got = (g.vouchers[m.key] || []).slice().sort(function (a, b) {
+          return String(a.uploadedAt).localeCompare(String(b.uploadedAt));
+        });
+        var n = got.length;
         return '<div class="vm-line">' + (n ? '<span class="ok">✓</span>' : '<span class="miss">✗</span>')
-          + ' <b style="font-weight:600">' + esc(m.name) + '</b> ' + n + '/' + m.slots.length + ' '
+          + ' <b style="font-weight:600">' + esc(m.name) + '</b> ' + n + '张' + (m.max ? '/最多' + m.max : '') + ' '
           + got.map(function (v, i) {
-            return v ? '<a href="' + esc(v.url) + '" target="_blank" title="' + esc(m.slots[i] + ' · ' + fmtT(v.uploadedAt)) + '">'
-              + esc(m.slots.length > 1 ? m.slots[i] : '查看') + '</a>' : '';
-          }).filter(Boolean).join(' ')
-          + (g.extra[m.key] ? ' <i>账户ID：' + esc(g.extra[m.key]) + '</i>' : '')
+            return '<a href="' + esc(v.url) + '" target="_blank" title="' + esc(v.name + ' · ' + fmtT(v.uploadedAt)) + '">'
+              + (i + 1) + '</a>';
+          }).join(' ')
+          + (g.extra[m.key] ? ' <i>' + esc((m.extraField || {}).label || '附加') + '：' + esc(g.extra[m.key]) + '</i>' : '')
           + '</div>';
       }).join('');
 
@@ -164,19 +162,16 @@
     // Sheet2 凭证总览：一行一个品牌，每个排位事项一列「已传数」+ 一列链接
     var h2 = ['品牌名称', '是否报规划'];
     UP_MODS.forEach(function (m) {
-      h2.push(m.name + '(已传/应传)', m.name + '凭证链接');
+      h2.push(m.name + '(张数)', m.name + '凭证链接');
       if (m.extraField) h2.push(m.extraField.label);
     });
     h2.push('投放力', '已传凭证总数');
     var r2 = BRANDS.map(function (g) {
       var row = [g.brand, g.plan ? '是' : '否'], total = 0;
       UP_MODS.forEach(function (m) {
-        var got = m.slots.map(function (_, i) { return g.vouchers[m.key + '#' + i]; });
-        var n = got.filter(Boolean).length;
-        total += n;
-        row.push(n + '/' + m.slots.length, got.map(function (v, i) {
-          return v ? (m.slots.length > 1 ? m.slots[i] + '：' : '') + v.url : '';
-        }).filter(Boolean).join('\n'));
+        var got = g.vouchers[m.key] || [];
+        total += got.length;
+        row.push(got.length, got.map(function (v) { return v.url; }).join('\n'));
         if (m.extraField) row.push(g.extra[m.key] || '');
       });
       row.push('官方校验', total);
@@ -184,14 +179,14 @@
     });
 
     // Sheet3 凭证明细：每次上传一行（含被覆盖的历史版本）
-    var h3 = ['品牌名称', '排位事项', '凭证格', '文件名', '链接', '大小(KB)', '上传时间', '是否当前生效'];
+    var h3 = ['品牌名称', '排位事项', '文件名', '链接', '大小(KB)', '上传时间', '附加信息'];
     var r3 = [];
     BRANDS.forEach(function (g) {
       g.history.slice().sort(function (a, b) { return String(a.uploadedAt).localeCompare(String(b.uploadedAt)); })
         .forEach(function (v) {
-          var cur = g.vouchers[v.module + '#' + v.slot];
-          r3.push([g.brand, v.moduleName || v.module, v.slotName || '', v.name || '', v.url || '',
-            v.size ? Math.round(v.size / 1024) : '', fmtT(v.uploadedAt), cur === v ? '是' : '已被覆盖']);
+          var ex = v.extra ? Object.keys(v.extra).map(function (k) { return v.extra[k]; }).join('；') : '';
+          r3.push([g.brand, v.moduleName || v.module, v.name || '', v.url || '',
+            v.size ? Math.round(v.size / 1024) : '', fmtT(v.uploadedAt), ex]);
         });
     });
 
@@ -202,7 +197,7 @@
     window.HBXlsx.downloadXlsx([
       { name: '报规划', rows: [h1].concat(r1), cols: [16, 13, 9, 9].concat(XC.questions.map(function (q) { return q.type === 'multi' ? 30 : 18; })).concat([24]) },
       { name: '凭证总览', rows: [h2].concat(r2), cols: c2 },
-      { name: '凭证明细', rows: [h3].concat(r3), cols: [16, 10, 16, 28, 70, 10, 13, 12] },
+      { name: '凭证明细', rows: [h3].concat(r3), cols: [16, 10, 28, 70, 10, 13, 20] },
     ], '鹅选美妆节_' + BRANDS.length + '个品牌_' + new Date().toISOString().slice(0, 10) + '.xlsx');
   }
 

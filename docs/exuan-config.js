@@ -86,9 +86,9 @@ window.HB_EXUAN = {
   ],
 
   /* ── 下半部分：排位赛，传凭证，领加码激励 ──
-   * 一个模块 = 一个排位事项，各自独立上传。
-   * slots：该模块下的凭证格子，一格一张（如大场力最多 6 场 → 6 格）
-   * extraField：上传前需填写的附加信息（如素材力的上线账户ID）
+   * 客户侧只有一个上传入口，可一次多选；每个文件上传时选择对应的排位事项，后台按事项归类。
+   * max：数量上限提示（如大场力最多 6 场），仅提示不强制
+   * extraField：该事项需附带填写的信息（如素材力的上线账户ID）
    * noUpload：无需上传，官方校验（只展示标准）
    * examples：示例图（docs/assets/exuan/ 下）
    */
@@ -106,7 +106,6 @@ window.HB_EXUAN = {
         score: '0-2分',
         standard: ['提报微信小店双11补贴：微信小店后台 - 营销中心 - 平台活动'],
         uploadTip: '上传「提报补贴成功」截图',
-        slots: ['提报补贴成功截图'],
         examples: ['assets/exuan/goods-subsidy.jpg'],
       },
       {
@@ -114,8 +113,8 @@ window.HB_EXUAN = {
         name: '大场力',
         score: '0-6分',
         standard: ['① 人 / 货 / 场任一维度升级', '② 张贴双11鹅选美妆节贴片'],
-        uploadTip: '上传「大场」截图（最多 6 场，一场一张）',
-        slots: ['第1场', '第2场', '第3场', '第4场', '第5场', '第6场'],
+        uploadTip: '上传「大场」截图（最多 6 场）',
+        max: 6,
         examples: ['assets/exuan/live-upgrade.jpg'],
       },
       {
@@ -124,7 +123,6 @@ window.HB_EXUAN = {
         score: '0-8分',
         standard: ['四类高eco内容素材各上线 20 条+'],
         uploadTip: '上传「高eco素材」截图，并填写上线账户ID',
-        slots: ['机制素材场景化', '剧情内容效果化', '人设内容情感化', '实时资讯热点化'],
         extraField: { key: 'accountId', label: '素材上线账户ID', placeholder: '多个用逗号分隔', required: true },
         examples: ['assets/exuan/eco-material.jpg'],
       },
@@ -154,7 +152,6 @@ window.HB_EXUAN = {
         score: '0-2分',
         standard: ['① 视频号单开直播间', '② 张贴双11鹅选美妆节贴片'],
         uploadTip: '上传「单开直播间」截图',
-        slots: ['单开直播间截图'],
         examples: [],
       },
       {
@@ -163,7 +160,6 @@ window.HB_EXUAN = {
         score: '0-2分',
         standard: ['成功入驻经营号'],
         uploadTip: '上传「经营号入驻成功界面」截图',
-        slots: ['经营号入驻成功界面截图'],
         guide: {
           text: '对客：腾讯营销【经营户】入驻指南',
           url: 'https://doc.weixin.qq.com/doc/w3_ACoA4QbEACcCNa3hYMLM1RJSMbyZl?scode=AJEAIQdfAAoPrbU4k3AR0AEAZ-ADE',
