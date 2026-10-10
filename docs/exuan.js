@@ -544,7 +544,9 @@
         var ev = v.extra && v.extra[Object.keys(v.extra)[0]];
         if (ev) { state.extra = state.extra || {}; state.extra[v.module] = ev; }
       });
-      MINE = got.concat(local.filter(function (v) { return !paths[v.path]; }));
+      // 用此刻的本地记录合并（查询期间新传成功的也要保留，不能用发起查询时的快照）
+      var localNow = MINE.filter(function (v) { return v.__local && v.brand === brand; });
+      MINE = got.concat(localNow.filter(function (v) { return !paths[v.path]; }));
       renderRules();   // 重新渲染以回填账户ID
     }).catch(function () { renderAllCells(); });
   }
