@@ -54,13 +54,34 @@
     <p class="sub">切 tab 看两个 Sheet，不下载也能核对。当前受上方活动筛选影响。</p>
     <div id="preview"></div>
   </section>
+
+  <!-- ════════ 双11鹅选美妆节 ════════ -->
+  <section class="card">
+    <h2><span class="idx">鹅</span>双11鹅选美妆节 <span class="tag">报名 + 凭证</span></h2>
+    <p class="sub">上半部分报名与下半部分凭证都在这里。凭证可直接点开查看，判定扶持用。</p>
+    <div class="admin-bar">
+      <button class="btn primary" id="exBtnPull">拉取鹅选数据</button>
+      <button class="btn ghost" id="exBtnExport">导出鹅选 Excel</button>
+      <span class="hint" id="exStatus"></span>
+    </div>
+    <div class="tbl-wrap" style="margin-top:12px">
+      <table class="tbl" id="exList">
+        <thead><tr>
+          <th>提交时间</th><th>客户名称</th><th>时效</th><th>报名摘要</th><th>凭证</th><th>Issue</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
 </div>
 
 <script src="config.js"></script>
+<script src="exuan-config.js"></script>
 <script src="schema.js"></script>
 <script src="xlsx.js"></script>
 <script src="preview.js"></script>
 <script src="gh.js"></script>
 <script src="merge.js"></script>
+<script src="exuan-admin.js"></script>
 </body>
 </html>

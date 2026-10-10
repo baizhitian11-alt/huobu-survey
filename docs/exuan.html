@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>双11鹅选美妆节 · 活动报名与凭证上传</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="page">
+  <header class="hero act-hero">
+    <div class="act-nav" id="actNav"></div>
+    <h1>双11鹅选美妆节</h1>
+    <p class="hero-desc" id="heroDesc"></p>
+    <div class="deadline-box" id="deadlineBox" style="display:none"></div>
+  </header>
+
+  <main>
+    <!-- ════════ 上半部分：固定问卷（限时） ════════ -->
+    <section class="card">
+      <h2><span class="idx">1</span>活动报名<span class="tag-time" id="part1Tag"></span></h2>
+
+      <label class="field" style="max-width:520px">
+        <span class="label">客户名称 <span class="req">*</span></span>
+        <input id="brand" list="brandList" placeholder="输入客户简称，如：百雀羚" autocomplete="off" />
+        <datalist id="brandList"></datalist>
+        <span class="hint" id="brandHint"></span>
+      </label>
+
+      <div id="questionBox"></div>
+
+      <label class="field" style="margin-top:14px">
+        <span class="label">备注 / 想反馈的问题</span>
+        <textarea id="remark" rows="3" placeholder="选填"></textarea>
+      </label>
+    </section>
+
+    <section class="card">
+      <h2><span class="idx">✓</span>提交前确认</h2>
+      <div id="confirm"></div>
+    </section>
+
+    <!-- ════════ 下半部分：凭证上传（随时） ════════ -->
+    <section class="card voucher-card" id="voucherCard">
+      <h2><span class="idx">2</span><span id="voucherTitle">扶持凭证上传</span><span class="tag-anytime">随时可传</span></h2>
+      <p class="sub" id="voucherDesc"></p>
+
+      <label class="field" style="max-width:520px">
+        <span class="label">客户名称 <span class="req">*</span></span>
+        <input id="vBrand" list="brandList2" placeholder="与上方报名填写的客户名称保持一致" autocomplete="off" />
+        <datalist id="brandList2"></datalist>
+        <span class="hint">将自动关联到该客户的报名记录</span>
+      </label>
+
+      <div class="vdrop" id="vDrop">
+        <div class="vdrop-icon">⇪</div>
+        <div class="vdrop-text">点击选择或拖拽文件到此处<br/>
+          <span class="vdrop-sub">支持 截图图片 / PDF，单个 ≤ 5MB，可多选、可多次上传</span></div>
+        <input type="file" id="vFile" multiple style="display:none" />
+      </div>
+
+      <label class="field" style="margin-top:12px">
+        <span class="label" id="vNoteLabel">凭证说明（选填）</span>
+        <input id="vNote" placeholder="" />
+      </label>
+
+      <div class="vlist" id="vList"></div>
+
+      <div class="btns" style="margin-top:14px">
+        <button class="btn primary" id="btnUpload">上传凭证</button>
+      </div>
+      <div class="hint" id="vStatus" style="margin-top:8px"></div>
+    </section>
+  </main>
+
+  <footer class="actions">
+    <div class="save-tip">上半部分草稿自动保存 · 凭证上传不占用报名截止</div>
+    <div class="btns">
+      <button class="btn ghost" id="btnClear">清空上半部分</button>
+      <button class="btn primary" id="btnSubmit">提交活动报名</button>
+    </div>
+  </footer>
+</div>
+
+<div class="mask" id="doneMask">
+  <div class="done">
+    <div class="done-icon">✓</div>
+    <h3 id="doneTitle">报名提交成功！</h3>
+    <p id="doneId"></p>
+    <div class="btns" id="doneBtns"></div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="exuan-config.js"></script>
+<script src="products-data.js"></script>
+<script src="schema.js"></script>
+<script src="gh.js"></script>
+<script src="exuan.js"></script>
+</body>
+</html>

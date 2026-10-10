@@ -11,7 +11,9 @@ window.HB_CONFIG = {
    *  2. 生成 Fine-grained PAT：
    *     github.com/settings/personal-access-tokens/new
    *       Repository access → Only select repositories → 只选上面那个仓库
-   *       Permissions → Repository permissions → Issues → Read and write
+   *       Permissions → Repository permissions：
+   *         Issues   → Read and write   （问卷提交 + 凭证登记评论）
+   *         Contents → Read and write   （鹅选模块的凭证图片/文件上传）
    *       其他权限一律不给，Expiration 建议 30 天
    *  3. 把 token 转成 base64 后分片填进 tokenParts（见下方 tokenParts 说明）
    *     终端执行：  printf '%s' '<你的token>' | base64

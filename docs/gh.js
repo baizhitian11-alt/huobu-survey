@@ -266,6 +266,231 @@
     });
   }
 
+  /* ============================================================
+   * 通用能力：自定义 label 的提交/读取 + 凭证文件上传 + issue 评论
+   * ============================================================ */
+
+  /** 通用提交：自定义标题/正文/标签（鹅选等新模块用） */
+  function submitIssue(title, body, labels) {
+    if (!enabled()) return Promise.reject(new Error('GitHub 后端未配置'));
+    return fetch(API + '/repos/' + GH.repo + '/issues', {
+      method: 'POST',
+      headers: headers(true, true),
+      body: JSON.stringify({ title: title, body: body, labels: labels }),
+    }).then(function (r) {
+      return r.json().then(function (j) {
+        if (r.status === 401 || r.status === 403) {
+          throw new Error('token 无效或权限不足（需要 Issues: Read and write）');
+        }
+        if (r.status === 404) throw new Error('仓库不存在或 token 没有该仓库权限');
+        if (!r.ok) throw new Error((j && j.message) || ('HTTP ' + r.status));
+        return { ok: true, issue: j.number, url: j.html_url };
+      });
+    });
+  }
+
+  /** 按标签拉取 issue（客户端过滤，通用版 list） */
+  function listByLabel(label, onProgress) {
+    if (!readable()) return Promise.reject(new Error('未配置 github.repo'));
+    var out = [];
+    var page = 1;
+
+    function next() {
+      var url = API + '/repos/' + GH.repo + '/issues?state=open&per_page=100&page=' + page
+        + '&_=' + Date.now();
+      return fetch(url, { headers: headers(true), cache: 'no-store' }).then(function (r) {
+        if (r.status === 401) throw new Error('token 无效或已过期，请重新生成并执行 set_token.py');
+        if (r.status === 403) throw new Error('访问被拒绝（403）：权限不足或触发限流');
+        if (r.status === 404) throw new Error('仓库不存在或无权访问：' + GH.repo);
+        return r.json().then(function (arr) {
+          if (!r.ok) throw new Error((arr && arr.message) || ('HTTP ' + r.status));
+          if (!Array.isArray(arr)) throw new Error('返回格式异常');
+          arr.forEach(function (it) {
+            if (it.pull_request) return;
+            var labels = (it.labels || []).map(function (l) {
+              return typeof l === 'string' ? l : l.name;
+            });
+            if (labels.indexOf(label) < 0) return;
+            var rec = parseIssue(it);
+            if (rec) {
+              rec.__labels = labels;
+              out.push(rec);
+            }
+          });
+          if (onProgress) onProgress(out.length);
+          if (arr.length === 100 && page < 30) { page++; return next(); }
+          out.sort(function (a, b) {
+            return String(a.createdAt || '').localeCompare(String(b.createdAt || ''));
+          });
+          return out;
+        });
+      });
+    }
+    return next();
+  }
+
+  /** 在 issue 下追加评论 */
+  function addComment(issueNumber, body) {
+    if (!enabled()) return Promise.reject(new Error('需要 token 才能评论'));
+    return fetch(API + '/repos/' + GH.repo + '/issues/' + issueNumber + '/comments', {
+      method: 'POST',
+      headers: headers(true, true),
+      body: JSON.stringify({ body: body }),
+    }).then(function (r) {
+      return r.json().then(function (j) {
+        if (!r.ok) throw new Error((j && j.message) || ('HTTP ' + r.status));
+        return { ok: true, id: j.id };
+      });
+    });
+  }
+
+  /** 读取某 issue 的全部评论（自动翻页） */
+  function listComments(issueNumber) {
+    if (!readable()) return Promise.reject(new Error('未配置 github.repo'));
+    var out = [];
+    var page = 1;
+    function next() {
+      return fetch(API + '/repos/' + GH.repo + '/issues/' + issueNumber
+        + '/comments?per_page=100&page=' + page + '&_=' + Date.now(),
+        { headers: headers(true), cache: 'no-store' }).then(function (r) {
+        return r.json().then(function (arr) {
+          if (!r.ok) throw new Error((arr && arr.message) || ('HTTP ' + r.status));
+          (arr || []).forEach(function (c) {
+            out.push({ id: c.id, body: c.body || '', createdAt: c.created_at });
+          });
+          if (arr.length === 100 && page < 10) { page++; return next(); }
+          return out;
+        });
+      });
+    }
+    return next();
+  }
+
+  /** 从评论里解析凭证记录（```json {"type":"voucher",...} ```） */
+  function parseVouchers(comments) {
+    var out = [];
+    (comments || []).forEach(function (c) {
+      var m = (c.body || '').match(/```json\s*([\s\S]*?)```/);
+      if (!m) return;
+      try {
+        var obj = JSON.parse(m[1].trim());
+        if (obj && obj.type === 'voucher') {
+          obj.__commentId = c.id;
+          out.push(obj);
+        }
+      } catch (e) { /* 忽略坏数据 */ }
+    });
+    return out;
+  }
+
+  /** 凭证评论正文：人可读 + 机器可解析 */
+  function voucherCommentBody(v) {
+    var kb = v.size ? Math.round(v.size / 1024) + 'KB' : '';
+    return [
+      '**凭证上传** · ' + (v.brand || '-') + ' · ' + (v.uploadedAt || ''),
+      '',
+      '- 文件：[' + v.name + '](' + v.url + ')' + (kb ? '（' + kb + '）' : ''),
+      '- 说明：' + (v.note || '（无）'),
+      '',
+      '<!-- 以下为机器读取用，请勿修改 -->',
+      '```json',
+      JSON.stringify(v),
+      '```',
+    ].join('\n');
+  }
+
+  /* ---------- 凭证文件：存到仓库 data 分支（Contents API） ----------
+   * 放在独立 data 分支，避免每次上传都触发 Pages 重新构建主分支。
+   * 文件地址：https://raw.githubusercontent.com/{repo}/data/{path}
+   * 需要 token 有 Contents: Read and write 权限。
+   */
+
+  var DATA_BRANCH = 'data';
+
+  /** 确保 data 分支存在（不存在则从默认分支复制一个） */
+  function ensureDataBranch() {
+    return fetch(API + '/repos/' + GH.repo + '/git/refs/heads/' + DATA_BRANCH,
+      { headers: headers(true), cache: 'no-store' }).then(function (r) {
+      if (r.ok) return true;
+      if (r.status !== 404) throw new Error('检查分支失败 HTTP ' + r.status);
+      // 取默认分支最新 commit
+      return fetch(API + '/repos/' + GH.repo, { headers: headers(true) }).then(function (rr) {
+        return rr.json().then(function (repo) {
+          if (!rr.ok) throw new Error((repo && repo.message) || '读取仓库信息失败');
+          return fetch(API + '/repos/' + GH.repo + '/git/refs/heads/' + repo.default_branch,
+            { headers: headers(true) }).then(function (r3) {
+            return r3.json().then(function (ref) {
+              if (!r3.ok) throw new Error('读取默认分支失败');
+              return fetch(API + '/repos/' + GH.repo + '/git/refs', {
+                method: 'POST',
+                headers: headers(true, true),
+                body: JSON.stringify({ ref: 'refs/heads/' + DATA_BRANCH, sha: ref.object.sha }),
+              }).then(function (r4) {
+                if (!r4.ok && r4.status !== 422) throw new Error('创建 data 分支失败 HTTP ' + r4.status);
+                return true;
+              });
+            });
+          });
+        });
+      });
+    });
+  }
+
+  /**
+   * 上传文件到 data 分支
+   * @param {string} path  仓库内路径，如 uploads/exuan/xxx.png
+   * @param {string} base64 文件内容的 base64（不含 data: 前缀）
+   * @returns {Promise<{url, path}>}
+   */
+  function uploadFile(path, base64) {
+    if (!enabled()) return Promise.reject(new Error('需要 token 才能上传文件'));
+    return ensureDataBranch().then(function () {
+      return fetch(API + '/repos/' + GH.repo + '/contents/' + path, {
+        method: 'PUT',
+        headers: headers(true, true),
+        body: JSON.stringify({
+          message: 'voucher: ' + path,
+          content: base64,
+          branch: DATA_BRANCH,
+        }),
+      });
+    }).then(function (r) {
+      return r.json().then(function (j) {
+        if (r.status === 401 || r.status === 403) {
+          throw new Error('token 无效或缺少 Contents: Read and write 权限，请重新生成 token');
+        }
+        if (r.status === 404) throw new Error('仓库不存在或 token 没有该仓库权限');
+        if (r.status === 422) throw new Error('文件冲突（同名文件已存在），请重试');
+        if (!r.ok) throw new Error((j && j.message) || ('HTTP ' + r.status));
+        return {
+          ok: true,
+          path: path,
+          url: 'https://raw.githubusercontent.com/' + GH.repo + '/' + DATA_BRANCH + '/' + path,
+          page: (j.content && j.content.html_url) || '',
+        };
+      });
+    });
+  }
+
+  /** 删除 data 分支上的文件（运营侧删除错传的凭证） */
+  function deleteFile(path) {
+    if (!enabled()) return Promise.reject(new Error('需要 token'));
+    return fetch(API + '/repos/' + GH.repo + '/contents/' + path + '?ref=' + DATA_BRANCH,
+      { headers: headers(true), cache: 'no-store' }).then(function (r) {
+      return r.json().then(function (j) {
+        if (!r.ok) throw new Error('读取文件信息失败 HTTP ' + r.status);
+        return fetch(API + '/repos/' + GH.repo + '/contents/' + path, {
+          method: 'DELETE',
+          headers: headers(true, true),
+          body: JSON.stringify({ message: 'remove ' + path, sha: j.sha, branch: DATA_BRANCH }),
+        });
+      });
+    }).then(function (r) {
+      if (!r.ok) throw new Error('删除失败 HTTP ' + r.status);
+      return { ok: true };
+    });
+  }
+
   return {
     enabled: enabled,
     readable: readable,
@@ -274,5 +499,14 @@
     list: list,
     close: close,
     parseIssue: parseIssue,
+    /* 通用 / 凭证 */
+    submitIssue: submitIssue,
+    listByLabel: listByLabel,
+    addComment: addComment,
+    listComments: listComments,
+    parseVouchers: parseVouchers,
+    voucherCommentBody: voucherCommentBody,
+    uploadFile: uploadFile,
+    deleteFile: deleteFile,
   };
 }));
