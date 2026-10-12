@@ -144,41 +144,7 @@
   function exportExcel() {
     if (!BRANDS.length) return alert('暂无数据，请先刷新');
 
-    // Sheet1 报规划：一行一个品牌（取最新一次）
-    var h1 = ['品牌名称', '提交时间', '是否逾期', '提交次数']
-      .concat(XC.questions.map(function (q) { return q.title + (q.unit ? '(' + q.unit + ')' : ''); }))
-      .concat(['备注']);
-    var r1 = BRANDS.filter(function (g) { return g.plan; }).map(function (g) {
-      var p = g.plan;
-      return [g.brand, fmtT(p.createdAt), p.late ? '逾期' : '按时', g.planCount]
-        .concat(XC.questions.map(function (q) {
-          var v = p.answers[q.key];
-          if (q.type === 'number' && v !== '' && v != null && isFinite(+v)) return +v;
-          return Array.isArray(v) ? v.join('、') : (v == null ? '' : String(v));
-        }))
-        .concat([p.remark || '']);
-    });
-
-    // Sheet2 凭证总览：一行一个品牌，每个排位事项一列「已传数」+ 一列链接
-    var h2 = ['品牌名称', '是否报规划'];
-    UP_MODS.forEach(function (m) {
-      h2.push(m.name + '(张数)', m.name + '凭证链接');
-      if (m.extraField) h2.push(m.extraField.label);
-    });
-    h2.push('投放力', '已传凭证总数');
-    var r2 = BRANDS.map(function (g) {
-      var row = [g.brand, g.plan ? '是' : '否'], total = 0;
-      UP_MODS.forEach(function (m) {
-        var got = g.vouchers[m.key] || [];
-        total += got.length;
-        row.push(got.length, got.map(function (v) { return v.url; }).join('\n'));
-        if (m.extraField) row.push(g.extra[m.key] || '');
-      });
-      row.push('官方校验', total);
-      return row;
-    });
-
-    // Sheet3 凭证明细（含图片）：每个文件一行，图片直接嵌在单元格里；按 品牌 → 排位事项 → 上传时间 排序
+    // 凭证明细：每个文件一行；按 品牌 → 排位事项 → 上传时间 排序
     var modOrder = {};
     XC.voucher.modules.forEach(function (m, i) { modOrder[m.key] = i; });
     var items = [];
@@ -190,10 +156,6 @@
         || (modOrder[a.v.module] || 0) - (modOrder[b.v.module] || 0)
         || String(a.v.uploadedAt).localeCompare(String(b.v.uploadedAt));
     });
-
-    var c2 = [16, 11];
-    UP_MODS.forEach(function (m) { c2.push(14, 60); if (m.extraField) c2.push(20); });
-    c2.push(10, 12);
 
     var btn = $('#exBtnExport');
     btn.disabled = true;
@@ -211,42 +173,117 @@
         return img;
       });
     }).then(function (imgs) {
-      var IMG_COL = 2, BOX_W = 300, BOX_H = 340, PAD = 6;
-      var h3 = ['品牌名称', '排位事项', '凭证图片', '原图链接', '文件名', '上传时间', '附加信息'];
-      var r3 = [], images = [], links = [], heights = {}, failed = 0;
+      var imgOf = new Map();
+      items.forEach(function (it, i) { imgOf.set(it.v, imgs[i]); });
+      var failed = items.filter(function (it, i) { return !imgs[i] || (!imgs[i].data && !imgs[i].pdf); }).length;
+      var pdfs = items.filter(function (it, i) { return imgs[i] && imgs[i].pdf; }).length;
+      var embedded = items.length - failed - pdfs;
+      var px2ch = function (px) { return Math.max(10, Math.ceil((px - 5) / 7)); };
 
-      items.forEach(function (it, i) {
-        var v = it.v, img = imgs[i], row = i + 1;
-        var ex = v.extra ? Object.keys(v.extra).map(function (k) { return v.extra[k]; }).join('；') : '';
-        var cellText = '';
-        if (img && img.data) {
-          var s = Math.min(BOX_W / img.w, BOX_H / img.h, 1);
-          images.push({
-            row: row, col: IMG_COL, data: img.data, ext: 'jpeg',
-            w: Math.round(img.w * s), h: Math.round(img.h * s), offX: PAD, offY: PAD,
-            name: it.g.brand + '-' + (v.moduleName || v.module),
-          });
-          heights[row] = Math.round(img.h * s) + PAD * 2;
+      /* ===== Sheet1：报规划 + 凭证缩略图（一行一个品牌，包含只传了凭证没报规划的品牌） ===== */
+      var TH = 120, TW_MAX = 180, GAP = 6, PAD = 6;
+      var planCols = XC.questions.length;
+      var h1 = ['品牌名称', '提交时间', '是否逾期', '提交次数']
+        .concat(XC.questions.map(function (q) { return q.title + (q.unit ? '(' + q.unit + ')' : ''); }))
+        .concat(['备注']);
+      var modCol0 = h1.length;
+      UP_MODS.forEach(function (m) {
+        h1.push(m.name + '凭证（点图看原图）');
+        if (m.extraField) h1.push(m.extraField.label);
+      });
+      h1.push('投放力', '已传凭证总数');
+
+      var r1 = [], img1 = [], link1 = [], ht1 = {}, colW = {};
+      var ordered = BRANDS.slice().sort(function (a, b) { return (b.plan ? 1 : 0) - (a.plan ? 1 : 0); });
+      ordered.forEach(function (g, gi) {
+        var row = gi + 1, p = g.plan, cells;
+        if (p) {
+          cells = [g.brand, fmtT(p.createdAt), p.late ? '逾期' : '按时', g.planCount]
+            .concat(XC.questions.map(function (q) {
+              var v = p.answers[q.key];
+              if (q.type === 'number' && v !== '' && v != null && isFinite(+v)) return +v;
+              return Array.isArray(v) ? v.join('、') : (v == null ? '' : String(v));
+            }))
+            .concat([p.remark || '']);
         } else {
-          cellText = img && img.pdf ? 'PDF 文件，点右侧链接查看' : '图片读取失败，点右侧链接查看';
-          if (!(img && img.pdf)) failed++;
-          heights[row] = 40;
+          cells = [g.brand, '未报规划', '', 0];
+          for (var k = 0; k < planCols; k++) cells.push('');
+          cells.push('');
         }
-        r3.push([it.g.brand, v.moduleName || v.module, cellText, v.url ? '打开原图' : '',
+        var col = modCol0, total = 0, rowHasImg = false;
+        UP_MODS.forEach(function (m) {
+          var got = (g.vouchers[m.key] || []).slice().sort(function (a, b) {
+            return String(a.uploadedAt).localeCompare(String(b.uploadedAt));
+          });
+          total += got.length;
+          var x = PAD, notes = [];
+          got.forEach(function (v) {
+            var im = imgOf.get(v);
+            if (im && im.data) {
+              var s = Math.min(TH / im.h, TW_MAX / im.w);
+              var w = Math.round(im.w * s), h = Math.round(im.h * s);
+              img1.push({ row: row, col: col, data: im.data, ext: 'jpeg', w: w, h: h, offX: x, offY: PAD,
+                url: v.url, name: g.brand + '-' + m.name });
+              x += w + GAP;
+              rowHasImg = true;
+            } else {
+              notes.push(im && im.pdf ? 'PDF' : '图片读取失败');
+            }
+          });
+          var text = '';
+          if (!got.length) text = '未上传';
+          else if (notes.length) text = notes.length + ' 个' + (notes[0] === 'PDF' ? ' PDF' : '文件读取失败') + '，见「凭证明细」';
+          cells.push(text);
+          if (notes.length && got.length === 1) link1.push({ row: row, col: col, url: got[0].url });
+          colW[col] = Math.max(colW[col] || 0, x + PAD, notes.length ? 190 : 0);
+          col++;
+          if (m.extraField) { cells.push(g.extra[m.key] || ''); col++; }
+        });
+        cells.push('官方校验', total);
+        r1.push(cells);
+        ht1[row] = rowHasImg ? TH + PAD * 2 : 36;
+      });
+
+      var cols1 = [16, 13, 9, 9].concat(XC.questions.map(function (q) { return q.type === 'multi' ? 30 : 18; })).concat([24]);
+      var cc = modCol0;
+      UP_MODS.forEach(function (m) {
+        cols1[cc] = px2ch(Math.max(colW[cc] || 0, 150));
+        cc++;
+        if (m.extraField) { cols1[cc] = 20; cc++; }
+      });
+      cols1.push(10, 12);
+
+      /* ===== Sheet2：凭证明细（大图，每个文件一行） ===== */
+      var BOX_W = 300, BOX_H = 340;
+      var h2 = ['品牌名称', '排位事项', '凭证图片（点图看原图）', '原图链接', '文件名', '上传时间', '附加信息'];
+      var r2 = [], img2 = [], link2 = [], ht2 = {};
+      items.forEach(function (it, i) {
+        var v = it.v, im = imgs[i], row = i + 1, cellText = '';
+        var ex = v.extra ? Object.keys(v.extra).map(function (k) { return v.extra[k]; }).join('；') : '';
+        if (im && im.data) {
+          var s = Math.min(BOX_W / im.w, BOX_H / im.h, 1);
+          img2.push({ row: row, col: 2, data: im.data, ext: 'jpeg', w: Math.round(im.w * s), h: Math.round(im.h * s),
+            offX: PAD, offY: PAD, url: v.url, name: it.g.brand + '-' + (v.moduleName || v.module) });
+          ht2[row] = Math.round(im.h * s) + PAD * 2;
+        } else {
+          cellText = im && im.pdf ? 'PDF 文件，点右侧链接查看' : '图片读取失败，点右侧链接查看';
+          ht2[row] = 40;
+        }
+        r2.push([it.g.brand, v.moduleName || v.module, cellText, v.url ? '打开原图' : '',
           v.name || '', fmtT(v.uploadedAt), ex]);
-        if (v.url) links.push({ row: row, col: 3, url: v.url });
+        if (v.url) link2.push({ row: row, col: 3, url: v.url });
       });
 
       window.HBXlsx.downloadXlsx([
-        { name: '报规划', rows: [h1].concat(r1), cols: [16, 13, 9, 9].concat(XC.questions.map(function (q) { return q.type === 'multi' ? 30 : 18; })).concat([24]) },
-        { name: '凭证明细（含图片）', rows: [h3].concat(r3), cols: [16, 10, 44, 11, 26, 13, 20],
-          images: images, links: links, rowHeights: heights, wrap: true },
-        { name: '凭证总览', rows: [h2].concat(r2), cols: c2 },
+        { name: '报规划及凭证（含图片）', rows: [h1].concat(r1), cols: cols1,
+          images: img1, links: link1, rowHeights: ht1, wrap: true },
+        { name: '凭证明细（大图）', rows: [h2].concat(r2), cols: [16, 10, 44, 11, 26, 13, 20],
+          images: img2, links: link2, rowHeights: ht2, wrap: true },
       ], '鹅选美妆节_' + BRANDS.length + '个品牌_' + new Date().toISOString().slice(0, 10) + '.xlsx');
 
-      $('#exStatus').textContent = '已导出：' + images.length + ' 张图片已嵌入 Excel'
-        + (failed ? '，' + failed + ' 张读取失败（保留了链接）' : '')
-        + (items.length - images.length - failed ? '，' + (items.length - images.length - failed) + ' 个 PDF 保留链接' : '');
+      $('#exStatus').textContent = '已导出：' + embedded + ' 张凭证图片已嵌入 Excel（第一张表最右侧各排位事项列）'
+        + (pdfs ? '，' + pdfs + ' 个 PDF 保留链接' : '')
+        + (failed ? '，' + failed + ' 张读取失败（保留了链接）' : '');
     }).catch(function (e) {
       alert('导出失败：' + e.message);
       $('#exStatus').textContent = '导出失败：' + e.message;

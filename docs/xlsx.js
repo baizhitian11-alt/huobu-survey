@@ -202,24 +202,26 @@
    * 图片用 twoCellAnchor + editAs="oneCell"（Excel 自己保存时用的写法，WPS / Numbers 兼容最好）：
    * 随单元格移动，但不随单元格拉伸变形
    */
-  function drawingXml(sheet, images) {
+  function drawingXml(sheet, images, imgRids) {
     return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
       + '<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing"'
       + ' xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"'
       + ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
       + images.map(function (im, i) {
           var cx = Math.round(im.w * EMU), cy = Math.round(im.h * EMU);
-          var ox = im.offX || 0, oy = im.offY || 0;
-          var endC = walk(im.col, ox, im.w, function (c) { return colPx(sheet, c); });
-          var endR = walk(im.row, oy, im.h, function (r) { return rowPx(sheet, r); });
+          var cw = function (c) { return colPx(sheet, c); }, rh = function (r) { return rowPx(sheet, r); };
+          var fromC = walk(im.col, 0, im.offX || 0, cw), fromR = walk(im.row, 0, im.offY || 0, rh);
+          var endC = walk(fromC.idx, fromC.off, im.w, cw);
+          var endR = walk(fromR.idx, fromR.off, im.h, rh);
           return '<xdr:twoCellAnchor editAs="oneCell">'
-            + '<xdr:from><xdr:col>' + im.col + '</xdr:col><xdr:colOff>' + Math.round(ox * EMU) + '</xdr:colOff>'
-            + '<xdr:row>' + im.row + '</xdr:row><xdr:rowOff>' + Math.round(oy * EMU) + '</xdr:rowOff></xdr:from>'
+            + '<xdr:from><xdr:col>' + fromC.idx + '</xdr:col><xdr:colOff>' + Math.round(fromC.off * EMU) + '</xdr:colOff>'
+            + '<xdr:row>' + fromR.idx + '</xdr:row><xdr:rowOff>' + Math.round(fromR.off * EMU) + '</xdr:rowOff></xdr:from>'
             + '<xdr:to><xdr:col>' + endC.idx + '</xdr:col><xdr:colOff>' + Math.round(endC.off * EMU) + '</xdr:colOff>'
             + '<xdr:row>' + endR.idx + '</xdr:row><xdr:rowOff>' + Math.round(endR.off * EMU) + '</xdr:rowOff></xdr:to>'
-            + '<xdr:pic><xdr:nvPicPr><xdr:cNvPr id="' + (i + 2) + '" name="' + esc(im.name || ('图片' + (i + 1))) + '"/>'
+            + '<xdr:pic><xdr:nvPicPr><xdr:cNvPr id="' + (i + 2) + '" name="' + esc(im.name || ('图片' + (i + 1))) + '"'
+            + (im.__linkRid ? ' descr="点击打开原图"><a:hlinkClick r:id="rId' + im.__linkRid + '"/></xdr:cNvPr>' : '/>')
             + '<xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr>'
-            + '<xdr:blipFill><a:blip r:embed="rId' + (i + 1) + '"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill>'
+            + '<xdr:blipFill><a:blip r:embed="rId' + imgRids[i] + '"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill>'
             + '<xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="' + cx + '" cy="' + cy + '"/></a:xfrm>'
             + '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic>'
             + '<xdr:clientData/></xdr:twoCellAnchor>';
@@ -245,6 +247,16 @@
     var files = [];
     var drawingNo = 0, mediaNo = 0;
     var drawingParts = [];   // Content_Types 用
+    var mediaSeen = [];      // 同一份图片数据只存一次：[{ data, target }]
+    function mediaTarget(im) {
+      for (var m = 0; m < mediaSeen.length; m++) if (mediaSeen[m].data === im.data) return mediaSeen[m].target;
+      mediaNo++;
+      var ext = im.ext === 'png' ? 'png' : 'jpeg';
+      files.push({ name: 'xl/media/image' + mediaNo + '.' + ext, data: im.data });
+      var t = '../media/image' + mediaNo + '.' + ext;
+      mediaSeen.push({ data: im.data, target: t });
+      return t;
+    }
 
     // 先处理每个 sheet 的图片 / 超链接，生成 drawing、media、rels
     var sheetParts = sheets.map(function (s, i) {
@@ -254,13 +266,16 @@
         drawingNo++;
         relDrawing = ++rid;
         rels.push({ id: relDrawing, type: REL_DRAWING, target: '../drawings/drawing' + drawingNo + '.xml' });
-        var dRels = imgs.map(function (im, k) {
-          mediaNo++;
-          var ext = im.ext === 'png' ? 'png' : 'jpeg';
-          files.push({ name: 'xl/media/image' + mediaNo + '.' + ext, data: im.data });
-          return { id: k + 1, type: REL_IMAGE, target: '../media/image' + mediaNo + '.' + ext };
+        var dRels = [], imgRids = [], dRid = 0, targetRid = {};
+        imgs = imgs.map(function (im) {
+          var t = mediaTarget(im);
+          if (!targetRid[t]) { targetRid[t] = ++dRid; dRels.push({ id: dRid, type: REL_IMAGE, target: t }); }
+          imgRids.push(targetRid[t]);
+          var o = Object.assign({}, im);
+          if (im.url) { o.__linkRid = ++dRid; dRels.push({ id: dRid, type: REL_LINK, target: im.url, external: true }); }
+          return o;
         });
-        files.push({ name: 'xl/drawings/drawing' + drawingNo + '.xml', data: drawingXml(s, imgs) });
+        files.push({ name: 'xl/drawings/drawing' + drawingNo + '.xml', data: drawingXml(s, imgs, imgRids) });
         files.push({ name: 'xl/drawings/_rels/drawing' + drawingNo + '.xml.rels', data: relsXml(dRels) });
         drawingParts.push(drawingNo);
       }
