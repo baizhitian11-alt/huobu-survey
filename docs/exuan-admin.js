@@ -178,27 +178,145 @@
       return row;
     });
 
-    // Sheet3 凭证明细：每次上传一行（含被覆盖的历史版本）
-    var h3 = ['品牌名称', '排位事项', '文件名', '链接', '大小(KB)', '上传时间', '附加信息'];
-    var r3 = [];
+    // Sheet3 凭证明细（含图片）：每个文件一行，图片直接嵌在单元格里；按 品牌 → 排位事项 → 上传时间 排序
+    var modOrder = {};
+    XC.voucher.modules.forEach(function (m, i) { modOrder[m.key] = i; });
+    var items = [];
     BRANDS.forEach(function (g) {
-      g.history.slice().sort(function (a, b) { return String(a.uploadedAt).localeCompare(String(b.uploadedAt)); })
-        .forEach(function (v) {
-          var ex = v.extra ? Object.keys(v.extra).map(function (k) { return v.extra[k]; }).join('；') : '';
-          r3.push([g.brand, v.moduleName || v.module, v.name || '', v.url || '',
-            v.size ? Math.round(v.size / 1024) : '', fmtT(v.uploadedAt), ex]);
-        });
+      g.history.forEach(function (v) { items.push({ g: g, v: v }); });
+    });
+    items.sort(function (a, b) {
+      return String(a.g.brand).localeCompare(String(b.g.brand), 'zh')
+        || (modOrder[a.v.module] || 0) - (modOrder[b.v.module] || 0)
+        || String(a.v.uploadedAt).localeCompare(String(b.v.uploadedAt));
     });
 
     var c2 = [16, 11];
     UP_MODS.forEach(function (m) { c2.push(14, 60); if (m.extraField) c2.push(20); });
     c2.push(10, 12);
 
-    window.HBXlsx.downloadXlsx([
-      { name: '报规划', rows: [h1].concat(r1), cols: [16, 13, 9, 9].concat(XC.questions.map(function (q) { return q.type === 'multi' ? 30 : 18; })).concat([24]) },
-      { name: '凭证总览', rows: [h2].concat(r2), cols: c2 },
-      { name: '凭证明细', rows: [h3].concat(r3), cols: [16, 10, 28, 70, 10, 13, 20] },
-    ], '鹅选美妆节_' + BRANDS.length + '个品牌_' + new Date().toISOString().slice(0, 10) + '.xlsx');
+    var btn = $('#exBtnExport');
+    btn.disabled = true;
+    btn.textContent = '正在打包图片…';
+    var done = 0;
+    var setProg = function () {
+      $('#exStatus').textContent = '正在下载凭证图片 ' + done + '/' + items.length + '（图片会直接嵌进 Excel）…';
+    };
+    setProg();
+
+    mapLimit(items, 4, function (it) {
+      return loadImage(it.v).then(function (img) {
+        done++;
+        setProg();
+        return img;
+      });
+    }).then(function (imgs) {
+      var IMG_COL = 2, BOX_W = 300, BOX_H = 340, PAD = 6;
+      var h3 = ['品牌名称', '排位事项', '凭证图片', '原图链接', '文件名', '上传时间', '附加信息'];
+      var r3 = [], images = [], links = [], heights = {}, failed = 0;
+
+      items.forEach(function (it, i) {
+        var v = it.v, img = imgs[i], row = i + 1;
+        var ex = v.extra ? Object.keys(v.extra).map(function (k) { return v.extra[k]; }).join('；') : '';
+        var cellText = '';
+        if (img && img.data) {
+          var s = Math.min(BOX_W / img.w, BOX_H / img.h, 1);
+          images.push({
+            row: row, col: IMG_COL, data: img.data, ext: 'jpeg',
+            w: Math.round(img.w * s), h: Math.round(img.h * s), offX: PAD, offY: PAD,
+            name: it.g.brand + '-' + (v.moduleName || v.module),
+          });
+          heights[row] = Math.round(img.h * s) + PAD * 2;
+        } else {
+          cellText = img && img.pdf ? 'PDF 文件，点右侧链接查看' : '图片读取失败，点右侧链接查看';
+          if (!(img && img.pdf)) failed++;
+          heights[row] = 40;
+        }
+        r3.push([it.g.brand, v.moduleName || v.module, cellText, v.url ? '打开原图' : '',
+          v.name || '', fmtT(v.uploadedAt), ex]);
+        if (v.url) links.push({ row: row, col: 3, url: v.url });
+      });
+
+      window.HBXlsx.downloadXlsx([
+        { name: '报规划', rows: [h1].concat(r1), cols: [16, 13, 9, 9].concat(XC.questions.map(function (q) { return q.type === 'multi' ? 30 : 18; })).concat([24]) },
+        { name: '凭证明细（含图片）', rows: [h3].concat(r3), cols: [16, 10, 44, 11, 26, 13, 20],
+          images: images, links: links, rowHeights: heights, wrap: true },
+        { name: '凭证总览', rows: [h2].concat(r2), cols: c2 },
+      ], '鹅选美妆节_' + BRANDS.length + '个品牌_' + new Date().toISOString().slice(0, 10) + '.xlsx');
+
+      $('#exStatus').textContent = '已导出：' + images.length + ' 张图片已嵌入 Excel'
+        + (failed ? '，' + failed + ' 张读取失败（保留了链接）' : '')
+        + (items.length - images.length - failed ? '，' + (items.length - images.length - failed) + ' 个 PDF 保留链接' : '');
+    }).catch(function (e) {
+      alert('导出失败：' + e.message);
+      $('#exStatus').textContent = '导出失败：' + e.message;
+    }).finally(function () {
+      btn.disabled = false;
+      btn.textContent = '导出鹅选 Excel';
+    });
+  }
+
+  /** 并发受限的 map：limit 个一起跑，结果按原顺序返回 */
+  function mapLimit(arr, limit, fn) {
+    var out = new Array(arr.length), idx = 0;
+    function worker() {
+      if (idx >= arr.length) return Promise.resolve();
+      var i = idx++;
+      return Promise.resolve(fn(arr[i], i)).then(function (r) { out[i] = r; }, function () { out[i] = null; })
+        .then(worker);
+    }
+    var ws = [];
+    for (var k = 0; k < Math.min(limit, arr.length); k++) ws.push(worker());
+    return Promise.all(ws).then(function () { return out; });
+  }
+
+  /**
+   * 下载凭证并统一转成 JPEG（Excel 对 webp/gif 支持差），长边压到 1200px
+   * 返回 { data:Uint8Array, w, h } / { pdf:true } / null
+   */
+  function loadImage(v) {
+    var name = v.path || v.name || '';
+    if (/\.pdf$/i.test(name)) return Promise.resolve({ pdf: true });
+    if (!/\.(png|jpe?g|webp|gif)$/i.test(name)) return Promise.resolve(null);
+
+    var apiUrl = v.path
+      ? 'https://api.github.com/repos/' + GHUB.repo() + '/contents/' + v.path.split('/').map(encodeURIComponent).join('/') + '?ref=data'
+      : '';
+    var get = function (url, headers) {
+      return fetch(url, { headers: headers || {}, cache: 'force-cache' }).then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.blob();
+      });
+    };
+    // 先走 raw 地址；刚上传的文件 CDN 偶尔还没生效，再走 API 兜底
+    return get(v.url).catch(function () {
+      if (!apiUrl) throw new Error('no api');
+      return get(apiUrl, { Accept: 'application/vnd.github.raw' });
+    }).then(function (blob) {
+      return new Promise(function (resolve, reject) {
+        var img = new Image();
+        var src = URL.createObjectURL(blob);
+        img.onload = function () {
+          var max = 1200, w = img.naturalWidth, h = img.naturalHeight;
+          if (Math.max(w, h) > max) { var s = max / Math.max(w, h); w = Math.round(w * s); h = Math.round(h * s); }
+          var cv = document.createElement('canvas');
+          cv.width = w; cv.height = h;
+          var ctx = cv.getContext('2d');
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(0, 0, w, h);   // 透明 PNG 转 JPEG 时垫白底
+          ctx.drawImage(img, 0, 0, w, h);
+          URL.revokeObjectURL(src);
+          cv.toBlob(function (b) {
+            if (!b) return reject(new Error('转码失败'));
+            b.arrayBuffer().then(function (buf) {
+              resolve({ data: new Uint8Array(buf), w: w, h: h });
+            }, reject);
+          }, 'image/jpeg', 0.82);
+        };
+        img.onerror = function () { URL.revokeObjectURL(src); reject(new Error('图片解码失败')); };
+        img.src = src;
+      });
+    }).catch(function () { return null; });
   }
 
   $('#exBtnPull').addEventListener('click', pull);

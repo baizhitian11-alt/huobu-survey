@@ -131,44 +131,165 @@
     return s;
   }
 
-  function sheetXml(sheet) {
+  /**
+   * sheet 可选字段：
+   *   cols       列宽，[16, 20] 或 [{w:16}]
+   *   rowHeights { 行号(0起): 像素 }
+   *   images     [{ row, col, data:Uint8Array, ext:'jpeg'|'png', w, h, offX, offY }]  w/h 为显示像素
+   *   links      [{ row, col, url }]  单元格超链接
+   *   wrap       true 时正文单元格垂直居中 + 自动换行
+   * @param {number} relDrawing 该 sheet 的 drawing 关系 id（无图片时为 0）
+   * @param {Array} linkRids    与 sheet.links 一一对应的关系 id
+   */
+  function sheetXml(sheet, relDrawing, linkRids) {
     var rows = sheet.rows || [];
     var cols = sheet.cols && sheet.cols.length
       ? '<cols>' + sheet.cols.map(function (c, i) {
-          return '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + (c.w || 16) + '" customWidth="1"/>';
+          var w = typeof c === 'number' ? c : (c && c.w) || 16;
+          return '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + w + '" customWidth="1"/>';
         }).join('') + '</cols>'
       : '';
+    var heights = sheet.rowHeights || {};
+    var bodyStyle = sheet.wrap ? ' s="2"' : '';
 
     var body = rows.map(function (row, r) {
       var cells = (row || []).map(function (v, c) {
         var ref = colName(c) + (r + 1);
-        var style = r === 0 ? ' s="1"' : '';
+        var style = r === 0 ? ' s="1"' : bodyStyle;
         if (v === null || v === undefined || v === '') return '<c r="' + ref + '"' + style + '/>';
         if (typeof v === 'number' && isFinite(v)) return '<c r="' + ref + '"' + style + '><v>' + v + '</v></c>';
         return '<c r="' + ref + '"' + style + ' t="inlineStr"><is><t xml:space="preserve">' + esc(v) + '</t></is></c>';
       }).join('');
-      return '<row r="' + (r + 1) + '">' + cells + '</row>';
+      var ht = heights[r] ? ' ht="' + (Math.round(heights[r] * 0.75 * 100) / 100) + '" customHeight="1"' : '';
+      return '<row r="' + (r + 1) + '"' + ht + '>' + cells + '</row>';
     }).join('');
 
+    var links = (sheet.links || []).length
+      ? '<hyperlinks>' + sheet.links.map(function (l, i) {
+          return '<hyperlink ref="' + colName(l.col) + (l.row + 1) + '" r:id="rId' + linkRids[i] + '"/>';
+        }).join('') + '</hyperlinks>'
+      : '';
+
     return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
-      + '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+      + '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"'
+      + ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
       + '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'
-      + cols + '<sheetData>' + body + '</sheetData></worksheet>';
+      + cols + '<sheetData>' + body + '</sheetData>' + links
+      + (relDrawing ? '<drawing r:id="rId' + relDrawing + '"/>' : '')
+      + '</worksheet>';
   }
+
+  var EMU = 9525;   // 1 像素 = 9525 EMU
+
+  /** 列宽(字符) → 像素，按 Excel 默认字体近似 */
+  function colPx(sheet, c) {
+    var w = sheet.cols && sheet.cols[c];
+    w = typeof w === 'number' ? w : (w && w.w) || 8.43;
+    return Math.floor(w * 7 + 5);
+  }
+  function rowPx(sheet, r) {
+    return (sheet.rowHeights && sheet.rowHeights[r]) || 20;
+  }
+
+  /** 从 (起始格 + 偏移) 走 dist 像素，得到终点所在格与格内偏移 */
+  function walk(start, off, dist, sizeOf) {
+    var i = start, pos = off + dist;
+    while (pos > sizeOf(i)) { pos -= sizeOf(i); i++; }
+    return { idx: i, off: pos };
+  }
+
+  /**
+   * 图片用 twoCellAnchor + editAs="oneCell"（Excel 自己保存时用的写法，WPS / Numbers 兼容最好）：
+   * 随单元格移动，但不随单元格拉伸变形
+   */
+  function drawingXml(sheet, images) {
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+      + '<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing"'
+      + ' xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"'
+      + ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+      + images.map(function (im, i) {
+          var cx = Math.round(im.w * EMU), cy = Math.round(im.h * EMU);
+          var ox = im.offX || 0, oy = im.offY || 0;
+          var endC = walk(im.col, ox, im.w, function (c) { return colPx(sheet, c); });
+          var endR = walk(im.row, oy, im.h, function (r) { return rowPx(sheet, r); });
+          return '<xdr:twoCellAnchor editAs="oneCell">'
+            + '<xdr:from><xdr:col>' + im.col + '</xdr:col><xdr:colOff>' + Math.round(ox * EMU) + '</xdr:colOff>'
+            + '<xdr:row>' + im.row + '</xdr:row><xdr:rowOff>' + Math.round(oy * EMU) + '</xdr:rowOff></xdr:from>'
+            + '<xdr:to><xdr:col>' + endC.idx + '</xdr:col><xdr:colOff>' + Math.round(endC.off * EMU) + '</xdr:colOff>'
+            + '<xdr:row>' + endR.idx + '</xdr:row><xdr:rowOff>' + Math.round(endR.off * EMU) + '</xdr:rowOff></xdr:to>'
+            + '<xdr:pic><xdr:nvPicPr><xdr:cNvPr id="' + (i + 2) + '" name="' + esc(im.name || ('图片' + (i + 1))) + '"/>'
+            + '<xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr>'
+            + '<xdr:blipFill><a:blip r:embed="rId' + (i + 1) + '"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill>'
+            + '<xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="' + cx + '" cy="' + cy + '"/></a:xfrm>'
+            + '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic>'
+            + '<xdr:clientData/></xdr:twoCellAnchor>';
+        }).join('')
+      + '</xdr:wsDr>';
+  }
+
+  function relsXml(list) {
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+      + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+      + list.map(function (r) {
+          return '<Relationship Id="rId' + r.id + '" Type="' + r.type + '" Target="' + esc(r.target) + '"'
+            + (r.external ? ' TargetMode="External"' : '') + '/>';
+        }).join('')
+      + '</Relationships>';
+  }
+
+  var REL_DRAWING = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing';
+  var REL_IMAGE = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/image';
+  var REL_LINK = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink';
 
   function buildXlsx(sheets) {
     var files = [];
+    var drawingNo = 0, mediaNo = 0;
+    var drawingParts = [];   // Content_Types 用
 
-    files.push({
+    // 先处理每个 sheet 的图片 / 超链接，生成 drawing、media、rels
+    var sheetParts = sheets.map(function (s, i) {
+      var rels = [], relDrawing = 0, linkRids = [], rid = 0;
+      var imgs = (s.images || []).filter(function (im) { return im && im.data && im.data.length; });
+      if (imgs.length) {
+        drawingNo++;
+        relDrawing = ++rid;
+        rels.push({ id: relDrawing, type: REL_DRAWING, target: '../drawings/drawing' + drawingNo + '.xml' });
+        var dRels = imgs.map(function (im, k) {
+          mediaNo++;
+          var ext = im.ext === 'png' ? 'png' : 'jpeg';
+          files.push({ name: 'xl/media/image' + mediaNo + '.' + ext, data: im.data });
+          return { id: k + 1, type: REL_IMAGE, target: '../media/image' + mediaNo + '.' + ext };
+        });
+        files.push({ name: 'xl/drawings/drawing' + drawingNo + '.xml', data: drawingXml(s, imgs) });
+        files.push({ name: 'xl/drawings/_rels/drawing' + drawingNo + '.xml.rels', data: relsXml(dRels) });
+        drawingParts.push(drawingNo);
+      }
+      (s.links || []).forEach(function (l) {
+        var id = ++rid;
+        linkRids.push(id);
+        rels.push({ id: id, type: REL_LINK, target: l.url, external: true });
+      });
+      if (rels.length) {
+        files.push({ name: 'xl/worksheets/_rels/sheet' + (i + 1) + '.xml.rels', data: relsXml(rels) });
+      }
+      return { xml: sheetXml(Object.assign({}, s, { images: imgs }), relDrawing, linkRids) };
+    });
+
+    files.unshift({
       name: '[Content_Types].xml',
       data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
         + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
         + '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
         + '<Default Extension="xml" ContentType="application/xml"/>'
+        + '<Default Extension="jpeg" ContentType="image/jpeg"/>'
+        + '<Default Extension="png" ContentType="image/png"/>'
         + '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
         + '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
         + sheets.map(function (s, i) {
             return '<Override PartName="/xl/worksheets/sheet' + (i + 1) + '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>';
+          }).join('')
+        + drawingParts.map(function (n) {
+            return '<Override PartName="/xl/drawings/drawing' + n + '.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>';
           }).join('')
         + '</Types>',
     });
@@ -209,13 +330,15 @@
         + '<fill><patternFill patternType="solid"><fgColor rgb="FFE8F0FE"/><bgColor indexed="64"/></patternFill></fill></fills>'
         + '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>'
         + '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
-        + '<cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
-        + '<xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/></cellXfs>'
+        + '<cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
+        + '<xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/>'
+        + '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>'
+        + '</cellXfs>'
         + '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>',
     });
 
-    sheets.forEach(function (s, i) {
-      files.push({ name: 'xl/worksheets/sheet' + (i + 1) + '.xml', data: sheetXml(s) });
+    sheetParts.forEach(function (p, i) {
+      files.push({ name: 'xl/worksheets/sheet' + (i + 1) + '.xml', data: p.xml });
     });
 
     return zip(files);
