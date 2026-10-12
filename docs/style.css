@@ -712,3 +712,74 @@ table.xls td.empty { background: #fcfcfd; }
 .cu-msg.ok { color: #06a552; }
 .cu-msg.bad { color: #d4380d; }
 .rk-tbl td { padding-top: 12px; padding-bottom: 12px; }
+
+/* ==== 鹅选 10.12：红白头图 + logo / 多日期 / 展会选项 / 贴片 ==== */
+.hero.act-hero.ex-hero {
+  background: linear-gradient(135deg, #d9161f 0%, #ee2f2f 55%, #ff5a4a 100%);
+  color: #fff;
+}
+.ex-hero .hero-desc { color: rgba(255,255,255,.92); }
+.ex-hero .act-tab { color: rgba(255,255,255,.85); }
+.ex-hero .act-tab.on { background: #fff; color: #d9161f; }
+.ex-head { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+.ex-head-txt { flex: 1; min-width: 0; }
+.ex-head h1 { color: #fff; }
+.ex-logo {
+  flex: 0 0 auto; background: #fff; border-radius: 14px; padding: 8px 14px;
+  box-shadow: 0 6px 18px rgba(120,0,0,.25);
+}
+.ex-logo img { display: block; height: 96px; width: auto; }
+.ex-hero .ex-right { background: #fff; border-color: #fff; color: #5c1a1a; }
+.ex-hero .ex-right b { color: #d9161f; }
+
+.ex-part, .ex-time { color: #d9161f; }
+.q-no { background: #ffe8e8; color: #d9161f; }
+.ex-rank { background: #fff5f5; }
+.ex-uphint { color: #a8141b; background: #fff5f5; border-color: #ffd6d6; }
+
+@media (max-width: 640px) {
+  .ex-head { flex-direction: column-reverse; align-items: flex-start; }
+  .ex-logo img { height: 72px; }
+}
+
+/* 多个日期 */
+.q-dates { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.q-date {
+  display: inline-flex; align-items: center; gap: 4px; padding: 5px 6px 5px 12px;
+  background: #fff1f0; border: 1px solid #ffccc7; color: #a8141b; border-radius: 999px; font-size: 13px;
+}
+.q-date-rm {
+  border: none; background: none; color: #d9161f; font-size: 15px; line-height: 1; cursor: pointer;
+  width: 20px; height: 20px; border-radius: 50%;
+}
+.q-date-rm:hover { background: #ffd6d6; }
+.q-date-empty { font-size: 12.5px; color: #9aa3b5; }
+
+/* 带介绍链接的选项 */
+.chips.chips-rich { flex-direction: column; align-items: stretch; }
+.chip.chip-rich {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+  padding: 10px 14px; border-radius: 10px; text-align: left;
+}
+.chip.chip-rich b { font-weight: 600; }
+.chip-link {
+  font-size: 12px; color: #2b6cff; text-decoration: none; font-weight: 400; line-height: 1.5;
+}
+.chip-link:hover { text-decoration: underline; }
+
+/* 贴片预览 + 下载 */
+.rk-sticker {
+  margin-top: 8px; padding: 8px 10px; background: #fff7f7; border: 1px dashed #ffc2c2; border-radius: 8px;
+}
+.rk-lab-s { font-size: 11.5px; color: #9aa3b5; margin: 6px 0 4px; }
+.rk-sticker .rk-lab-s { margin-top: 0; color: #c0392b; }
+.rk-tbl .rk-ex img.st-img { width: 110px; height: 54px; object-fit: contain; background: #fff; }
+.st-dl {
+  display: inline-block; margin-top: 6px; font-size: 12.5px; font-weight: 600;
+  color: #d9161f; text-decoration: none;
+}
+.st-dl:hover { text-decoration: underline; }
+.q-date-add { white-space: nowrap; flex: 0 0 auto; }
+.ex-page .card h2 .idx { background: #d9161f; }
+.ex-page .chip.on { background: #fff1f0; border-color: #ff7875; color: #c41d24; }
+.ex-page .chip.chip-rich.on b { color: #c41d24; }

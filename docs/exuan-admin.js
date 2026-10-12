@@ -102,7 +102,7 @@
           + esc(fmtT(p.createdAt)) + (g.planCount > 1 ? ' <span class="badge">共' + g.planCount + '次</span>' : '')
           + '<div style="color:#7a8399;font-size:12px;margin-top:3px">日耗 ' + esc(answerText(XC.questions[1], p.answers.dailyCost) || '-')
           + ' · 涨幅 ' + esc(answerText(XC.questions[2], p.answers.growth) || '-')
-          + ' · 大场 ' + esc(p.answers.bigLiveDate || '-') + '</div>'
+          + ' · 大场 ' + esc([].concat(p.answers.bigLiveDate || []).join('、') || '-') + '</div>'
         : '<span style="color:#c1c8d6">未报规划</span>';
 
       var vCell = UP_MODS.map(function (m) {

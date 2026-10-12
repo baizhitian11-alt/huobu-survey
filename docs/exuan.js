@@ -31,6 +31,10 @@
   $('#actNav').innerHTML = '<a class="act-tab" href="index.html">← 全部活动</a>'
     + '<span class="act-tab on">鹅选美妆节</span>';
   $('#exTitle').textContent = XC.activityName;
+  if (XC.logo) {
+    $('#exLogo').innerHTML = '<img src="' + esc(XC.logo) + '" alt="视频号11.11 鹅选美妆节"/>';
+    $('#exLogo').style.display = '';
+  }
   $('#exSub').textContent = XC.subTitle + ' · ' + XC.intro.time;
   $('#exRights').innerHTML = XC.intro.rights.map(function (r) {
     return '<div class="ex-right"><b>' + esc(r.name) + '</b><span>' + esc(r.desc) + '</span></div>';
@@ -83,7 +87,17 @@
         + esc(q.title) + (q.required !== false ? ' <span class="req">*</span>' : '')
         + (q.type === 'multi' ? ' <span class="q-multi">多选</span>' : '') + '</div>';
 
-      if (q.type === 'text' || q.type === 'number' || q.type === 'date') {
+      if (q.type === 'dates') {
+        // 多个日期：选一个日期点「添加」，已选日期以标签展示，可删
+        var ds = toDates(v);
+        h += '<div class="q-inline"><input class="q-input q-date-pick" type="date" data-dk="' + esc(q.key) + '"'
+          + (q.min ? ' min="' + q.min + '"' : '') + (q.max ? ' max="' + q.max + '"' : '') + '/>'
+          + '<button class="btn ghost sm q-date-add" data-dk="' + esc(q.key) + '">＋ 添加日期</button></div>'
+          + '<div class="q-dates">' + (ds.length ? ds.map(function (d) {
+            return '<span class="q-date">' + esc(fmtDate(d))
+              + '<button class="q-date-rm" data-dk="' + esc(q.key) + '" data-d="' + esc(d) + '" title="删除">×</button></span>';
+          }).join('') : '<span class="q-date-empty">还没有添加日期，选好后点「添加日期」，可添加多个</span>') + '</div>';
+      } else if (q.type === 'text' || q.type === 'number' || q.type === 'date') {
         var attrs = ' data-qk="' + esc(q.key) + '" value="' + esc(v || '') + '"'
           + ' placeholder="' + esc(q.placeholder || '') + '"';
         if (q.type === 'number') attrs += ' type="number" step="any" inputmode="decimal"';
@@ -94,9 +108,18 @@
           + (q.unit ? '<span class="q-unit">' + esc(q.unit) + '</span>' : '') + '</div>';
       } else {
         var arr = Array.isArray(v) ? v : (v ? [v] : []);
-        h += '<div class="chips">' + q.options.map(function (op) {
-          return '<span class="chip' + (arr.indexOf(op) >= 0 ? ' on' : '') + '" data-qk="'
-            + esc(q.key) + '" data-op="' + esc(op) + '">' + esc(op) + '</span>';
+        var rich = q.options.some(function (op) { return typeof op === 'object'; });
+        h += '<div class="chips' + (rich ? ' chips-rich' : '') + '">' + q.options.map(function (op) {
+          var label = typeof op === 'object' ? op.label : op;
+          var on = arr.indexOf(label) >= 0 ? ' on' : '';
+          if (typeof op !== 'object') {
+            return '<span class="chip' + on + '" data-qk="' + esc(q.key) + '" data-op="' + esc(label) + '">' + esc(label) + '</span>';
+          }
+          return '<span class="chip chip-rich' + on + '" data-qk="' + esc(q.key) + '" data-op="' + esc(label) + '">'
+            + '<b>' + esc(label) + '</b>'
+            + (op.url ? '<a class="chip-link" href="' + esc(op.url) + '" target="_blank" rel="noopener">介绍：'
+              + esc(op.desc || '查看详情') + ' ↗</a>' : '')
+            + '</span>';
         }).join('') + '</div>';
       }
       if (q.hint) h += '<div class="hint">' + esc(q.hint) + '</div>';
@@ -104,7 +127,47 @@
     }).join('');
   }
 
+  /** 兼容旧草稿：单个日期字符串 → 数组 */
+  function toDates(v) {
+    if (Array.isArray(v)) return v.filter(Boolean);
+    return v ? [String(v)] : [];
+  }
+  function fmtDate(d) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d);
+    if (!m) return d;
+    var wk = '日一二三四五六'.charAt(new Date(+m[1], +m[2] - 1, +m[3]).getDay());
+    return (+m[2]) + '月' + (+m[3]) + '日（周' + wk + '）';
+  }
+
   $('#questionBox').addEventListener('click', function (e) {
+    if (e.target.closest('.chip-link')) return;   // 点「介绍」只打开链接，不切换选中
+
+    var add = e.target.closest('.q-date-add');
+    var rm = e.target.closest('.q-date-rm');
+    if (add || rm) {
+      e.preventDefault();
+      var dk = (add || rm).dataset.dk;
+      var qd = XC.questions.filter(function (x) { return x.key === dk; })[0];
+      var ds = toDates(state.answers[dk]);
+      if (add) {
+        var inp = document.querySelector('.q-date-pick[data-dk="' + dk + '"]');
+        var val = inp && inp.value;
+        if (!val) { alert('请先选择一个日期'); if (inp) inp.focus(); return; }
+        if ((qd.min && val < qd.min) || (qd.max && val > qd.max)) {
+          alert('日期需在 ' + qd.min + ' 至 ' + qd.max + ' 之间');
+          return;
+        }
+        if (ds.indexOf(val) < 0) ds.push(val);
+      } else {
+        ds = ds.filter(function (d) { return d !== rm.dataset.d; });
+      }
+      ds.sort();
+      state.answers[dk] = ds;
+      saveDraft();
+      renderQuestions();
+      return;
+    }
+
     var chip = e.target.closest('.chip');
     if (!chip) return;
     var q = XC.questions.filter(function (x) { return x.key === chip.dataset.qk; })[0];
@@ -141,6 +204,9 @@
         state.remark = d.remark || '';
         state.extra = d.extra || {};
         state.lastMod = d.lastMod || '';
+        XC.questions.forEach(function (q) {
+          if (q.type === 'dates') state.answers[q.key] = toDates(state.answers[q.key]);
+        });
       }
     } catch (e) { }
   }
@@ -254,6 +320,17 @@
   var issuePromise = {};
   var isImgName = function (s) { return /\.(png|jpe?g|webp|gif)$/i.test(s || ''); };
 
+  /** 贴片：预览图（点击放大）+ 网盘下载链接 */
+  function stickerHtml(st) {
+    return '<div class="rk-sticker"><div class="rk-lab-s">' + esc(st.title) + ' · 预览</div>'
+      + '<div class="rk-ex">' + (st.previews || []).map(function (src) {
+        return '<img class="st-img" src="' + esc(src) + '" data-big="' + esc(src) + '" loading="lazy" alt="贴片预览"/>';
+      }).join('') + '</div>'
+      + (st.download ? '<a class="st-dl" href="' + esc(st.download.url) + '" target="_blank" rel="noopener">⬇ '
+        + esc(st.download.text) + '</a>' : '')
+      + '</div>';
+  }
+
   /* ---- 表格：排位事项 / 标准说明 / 上传凭证(入口) / 美力值 ---- */
   function renderRules() {
     $('#rkTable').innerHTML = '<table class="tbl rk-tbl"><thead><tr>'
@@ -275,7 +352,8 @@
         return '<tr><td><b>' + esc(m.name) + '</b></td><td><ul class="rk-ul">'
           + m.standard.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ul>'
           + (m.guide ? '<a class="rk-guide" href="' + esc(m.guide.url) + '" target="_blank">📖 ' + esc(m.guide.text) + '</a>' : '')
-          + ((m.examples || []).length ? '<div class="rk-ex">' + m.examples.map(function (src) {
+          + (m.showSticker && XC.voucher.sticker ? stickerHtml(XC.voucher.sticker) : '')
+          + ((m.examples || []).length ? '<div class="rk-lab-s">示例</div><div class="rk-ex">' + m.examples.map(function (src) {
             return '<img src="' + esc(src) + '" data-big="' + esc(src) + '" loading="lazy" alt="示例"/>';
           }).join('') + '</div>' : '')
           + '</td><td>' + up + '</td><td class="rk-sc">🔥 ' + esc(m.score) + '</td></tr>';
@@ -386,25 +464,35 @@
   });
 
   /* ---- 上传实现 ---- */
+  /**
+   * 图片压缩：超过 1MB 的图（含手机原图 / HEIC）统一压成长边 2000px 的 JPEG，
+   * 十几 MB 的原图一般压完 1MB 以内。解码失败（如电脑版 Chrome 不认 HEIC）则原样上传。
+   */
   function compressIfNeeded(file) {
-    if (!/^image\//.test(file.type) || file.size <= 1048576 || /gif/i.test(file.type)) {
+    var isImg = /^image\//.test(file.type) || /\.(heic|heif)$/i.test(file.name);
+    if (!isImg || file.size <= 1048576 || /gif/i.test(file.type)) {
       return Promise.resolve(file);
     }
     return new Promise(function (resolve) {
       var img = new Image();
+      var src = URL.createObjectURL(file);
       img.onload = function () {
-        var max = 1800, w = img.width, h = img.height;
+        var max = 2000, w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
         if (Math.max(w, h) > max) { var r = max / Math.max(w, h); w = Math.round(w * r); h = Math.round(h * r); }
         var cv = document.createElement('canvas');
         cv.width = w; cv.height = h;
-        cv.getContext('2d').drawImage(img, 0, 0, w, h);
+        var ctx = cv.getContext('2d');
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, w, h);   // 透明 PNG 转 JPEG 垫白底
+        ctx.drawImage(img, 0, 0, w, h);
+        URL.revokeObjectURL(src);
         cv.toBlob(function (b) {
           resolve(b && b.size < file.size
-            ? new File([b], file.name.replace(/\.\w+$/, '.jpg'), { type: 'image/jpeg' }) : file);
+            ? new File([b], file.name.replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' }) : file);
         }, 'image/jpeg', 0.86);
       };
-      img.onerror = function () { resolve(file); };
-      img.src = URL.createObjectURL(file);
+      img.onerror = function () { URL.revokeObjectURL(src); resolve(file); };
+      img.src = src;
     });
   }
 
@@ -447,6 +535,10 @@
     var mod = modBy(key), f2;
     return compressIfNeeded(file).then(function (f) {
       f2 = f;
+      var maxMB = XC.voucher.maxMB || 25;
+      if (f.size > maxMB * 1048576) {
+        throw new Error('压缩后仍超过 ' + maxMB + 'MB，请截图后再传');
+      }
       return toBase64(f);
     }).then(function (b64) {
       var d = new Date();
@@ -471,12 +563,14 @@
 
   function uploadFiles(key, files) {
     var brand = state.brand.trim();
-    var maxB = (XC.voucher.maxMB || 5) * 1048576, valid = [], bad = [];
+    var maxMB = XC.voucher.maxMB || 25, maxB = maxMB * 1048576, valid = [], bad = [];
     Array.prototype.forEach.call(files, function (f) {
-      var isImg = /^image\//.test(f.type);
+      var isImg = /^image\//.test(f.type) || /\.(heic|heif)$/i.test(f.name);
       var isPdf = f.type === 'application/pdf' || /\.pdf$/i.test(f.name);
       if (!isImg && !isPdf) bad.push(f.name + '（仅支持图片 / PDF）');
-      else if (f.size > maxB) bad.push(f.name + '（超过 ' + (XC.voucher.maxMB || 5) + 'MB）');
+      // 图片会先压缩再上传，原图放宽到 100MB；PDF 不压缩，按上限校验
+      else if (isPdf && f.size > maxB) bad.push(f.name + '（PDF 超过 ' + maxMB + 'MB，请压缩后再传）');
+      else if (isImg && f.size > 100 * 1048576) bad.push(f.name + '（图片超过 100MB）');
       else valid.push(f);
     });
     if (bad.length) alert('以下文件未上传：\n· ' + bad.join('\n· '));

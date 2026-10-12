@@ -6,13 +6,15 @@
  *
  * 题目类型 type：
  *   text     单行文本        number   数字（可带 unit 单位）
- *   date     日期（可带 min/max）
- *   single   单选            multi    多选（options 数组）
+ *   date     日期（可带 min/max）    dates   多个日期（可带 min/max）
+ *   single   单选            multi    多选
+ * options 可以是字符串，也可以是 { label, desc, url }（url 会显示为「介绍」链接）
  * 通用字段：required（默认 true）、hint、showWhen: { key, equals }
  */
 window.HB_EXUAN = {
 
   activityName: '腾讯营销 × 鹅选美妆节',
+  logo: 'assets/exuan/logo.jpg',
   subTitle: '双11大促招募令',
   label: 'exuan',            // GitHub issue 标签，不要改
 
@@ -40,9 +42,9 @@ window.HB_EXUAN = {
     { key: 'dailyCost', title: '日耗预估', type: 'number', unit: '万元', placeholder: '如：5' },
     { key: 'growth', title: '预估涨幅', type: 'number', unit: '%', placeholder: '如：30', hint: '相对日常的预估涨幅，填 30 即 +30%' },
     {
-      key: 'bigLiveDate', title: '双十一大场日期', type: 'date',
+      key: 'bigLiveDate', title: '双十一大场日期', type: 'dates',
       min: '2026-10-12', max: '2026-11-15',
-      hint: '10.12-11.15 期间，核心填预估大场日，无需填周期',
+      hint: '10.12-11.15 期间，可选多个日期；核心填预估大场日，无需填周期',
     },
     { key: 'tengfeiId', title: '腾飞账户ID', type: 'text', placeholder: '广告账户 ID' },
     {
@@ -81,12 +83,25 @@ window.HB_EXUAN = {
       options: ['展会', '仓库', '商场柜台', '户外', '照日播暂无改变'],
       hint: '可多选',
     },
+    {
+      key: 'expo',
+      title: '是否有意愿到场参加以下展会直播（腾讯出资展位，邀请商家到展直播，要求日消耗3w+）',
+      type: 'multi',
+      options: [
+        { label: '10.29-10.31，杭州，电商零售博览会', desc: '2026中国(杭州)电商新零售品牌博览会', url: 'https://mp.weixin.qq.com/s/3_yqUvM7idvzMst08HtmOQ' },
+        { label: '11.4-11.8，广州，国际美妆周', desc: '第四届广州国际美妆周官宣，向世界发出“美丽邀约”！', url: 'https://mp.weixin.qq.com/s/0bhVtkwtiXuCUCbjMPQokQ' },
+        { label: '11.10-11.12，上海，华礼展', desc: '兼顾体面与潮流！11月10-12日来上海华礼展，承包你全年终礼赠~', url: 'https://mp.weixin.qq.com/s/MLEvC5NoL9lM3l-z1zZ-iA' },
+        '暂无参展意愿',
+      ],
+      hint: '可多选；点「介绍」查看展会详情',
+    },
     { key: 'decoration', title: '直播间是否有主题装修', type: 'single', options: ['是', '否'] },
     { key: 'bidUp', title: '是否接受出价提高', type: 'single', options: ['是', '否'] },
   ],
 
   /* ── 下半部分：排位赛，传凭证，领加码激励 ──
-   * 客户侧只有一个上传入口，可一次多选；每个文件上传时选择对应的排位事项，后台按事项归类。
+   * 每个排位事项一行，行内自带上传入口，可多张、随时传。
+   * showSticker：在标准说明下展示贴片预览图 + 下载链接
    * max：数量上限提示（如大场力最多 6 场），仅提示不强制
    * extraField：该事项需附带填写的信息（如素材力的上线账户ID）
    * noUpload：无需上传，官方校验（只展示标准）
@@ -97,8 +112,15 @@ window.HB_EXUAN = {
     timeTip: '填写时间：11.4日前【选填，支持周期内上传】',
     totalScore: '美力值【总30分】',
     rankTip: '周榜单更新：每周三更新榜单排名，时间：10.21、10.28、11.4、11.11',
-    accept: '.png,.jpg,.jpeg,.webp,.gif,.pdf',
-    maxMB: 5,
+    accept: '.png,.jpg,.jpeg,.webp,.gif,.heic,.pdf',
+    maxMB: 25,            // 单个文件上限（图片会先在浏览器压缩，原图再大也能传）
+
+    /* 双11鹅选美妆节直播间贴片：在「张贴贴片」的事项下展示预览图 + 下载链接 */
+    sticker: {
+      title: '双11鹅选美妆节贴片',
+      previews: ['assets/exuan/logo.jpg', 'assets/exuan/sticker-white.jpg'],
+      download: { text: '下载贴片（11.11美妆节直播间贴片 · 微盘）', url: 'https://drive.weixin.qq.com/s?k=AJEAIQdfAAohv75xy4' },
+    },
     modules: [
       {
         key: 'goods',
@@ -113,6 +135,7 @@ window.HB_EXUAN = {
         name: '大场力',
         score: '0-6分',
         standard: ['① 人 / 货 / 场任一维度升级', '② 张贴双11鹅选美妆节贴片'],
+        showSticker: true,
         uploadTip: '上传「大场」截图（最多 6 场）',
         max: 6,
         examples: ['assets/exuan/live-upgrade.jpg'],
@@ -121,7 +144,7 @@ window.HB_EXUAN = {
         key: 'material',
         name: '素材力',
         score: '0-8分',
-        standard: ['四类高eco内容素材各上线 20 条+'],
+        standard: ['四类高eco内容素材各上线 20 条+，提升3秒完播率 + 平均播放时长'],
         uploadTip: '上传「高eco素材」截图，并填写上线账户ID',
         extraField: { key: 'accountId', label: '素材上线账户ID', placeholder: '多个用逗号分隔', required: true },
         examples: ['assets/exuan/eco-material.jpg'],
@@ -151,6 +174,7 @@ window.HB_EXUAN = {
         name: '本土力',
         score: '0-2分',
         standard: ['① 视频号单开直播间', '② 张贴双11鹅选美妆节贴片'],
+        showSticker: true,
         uploadTip: '上传「单开直播间」截图',
         examples: [],
       },
