@@ -783,3 +783,17 @@ table.xls td.empty { background: #fcfcfd; }
 .ex-page .card h2 .idx { background: #d9161f; }
 .ex-page .chip.on { background: #fff1f0; border-color: #ff7875; color: #c41d24; }
 .ex-page .chip.chip-rich.on b { color: #c41d24; }
+
+/* ==== 鹅选 10.12 第二批：凭证提供示例 / 指引链接 ==== */
+.cu-proof {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin: 2px 0 8px; padding: 6px 8px; background: #fff7f7;
+  border: 1px dashed #ffc2c2; border-radius: 8px;
+}
+.cu-proof-lab { font-size: 11.5px; color: #c0392b; flex: 1 0 100%; }
+.cu-proof img {
+  width: 64px; height: 82px; object-fit: cover; object-position: top;
+  border-radius: 6px; border: 1px solid #f0d6d6; background: #fff; cursor: zoom-in;
+}
+.rk-guide { display: inline-block; margin-top: 4px; font-size: 12.5px; color: #2b6cff; text-decoration: none; }
+.rk-guide:hover { text-decoration: underline; }

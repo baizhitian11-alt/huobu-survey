@@ -342,6 +342,12 @@
           up = '<span class="rk-gov-s">无需上传 · 官方校验</span>';
         } else {
           up = '<div class="cell-up" data-mod="' + esc(m.key) + '"><div class="cu-tip">' + esc(m.uploadTip) + '</div>';
+          if ((m.proofExamples || []).length) {
+            up += '<div class="cu-proof"><span class="cu-proof-lab">凭证示例（点击放大）</span>'
+              + m.proofExamples.map(function (src) {
+                return '<img src="' + esc(src) + '" data-big="' + esc(src) + '" loading="lazy" alt="凭证示例"/>';
+              }).join('') + '</div>';
+          }
           if (m.extraField) {
             up += '<input class="rk-extra cu-extra" data-mod="' + esc(m.key) + '" value="'
               + esc((state.extra || {})[m.key] || '') + '" placeholder="' + esc(m.extraField.label)

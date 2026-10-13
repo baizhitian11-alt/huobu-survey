@@ -46,7 +46,7 @@ window.HB_EXUAN = {
       min: '2026-10-12', max: '2026-11-15',
       hint: '10.12-11.15 期间，可选多个日期；核心填预估大场日，无需填周期',
     },
-    { key: 'tengfeiId', title: '腾飞账户ID', type: 'text', placeholder: '广告账户 ID' },
+    { key: 'tengfeiId', title: '腾飞账户ID（英文逗号隔开）', type: 'text', placeholder: '例如：12345678,87654321', hint: '多个账户ID请使用英文逗号 , 隔开' },
     {
       key: 'manjianCoupon', title: '是否已提报微信小店「双11满减券」活动',
       type: 'single', options: ['是', '否'],
@@ -105,7 +105,8 @@ window.HB_EXUAN = {
    * max：数量上限提示（如大场力最多 6 场），仅提示不强制
    * extraField：该事项需附带填写的信息（如素材力的上线账户ID）
    * noUpload：无需上传，官方校验（只展示标准）
-   * examples：示例图（docs/assets/exuan/ 下）
+   * examples：标准示例图（docs/assets/exuan/ 下）
+   * proofExamples：凭证提供示例（告诉客户该上传什么样的截图），显示在上传格里
    */
   voucher: {
     title: '二、排位赛，传凭证，领加码激励！',
@@ -136,18 +137,24 @@ window.HB_EXUAN = {
         score: '0-6分',
         standard: ['① 人 / 货 / 场任一维度升级', '② 张贴双11鹅选美妆节贴片'],
         showSticker: true,
-        uploadTip: '上传「大场」截图（最多 6 场）',
+        uploadTip: '上传「大场」直播截图（需露出贴片，最多 6 场）',
         max: 6,
         examples: ['assets/exuan/live-upgrade.jpg'],
+        proofExamples: ['assets/exuan/live-proof-example.jpg'],
       },
       {
         key: 'material',
         name: '素材力',
         score: '0-8分',
         standard: ['四类高eco内容素材各上线 20 条+，提升3秒完播率 + 平均播放时长'],
-        uploadTip: '上传「高eco素材」截图，并填写上线账户ID',
-        extraField: { key: 'accountId', label: '素材上线账户ID', placeholder: '多个用逗号分隔', required: true },
+        guide: {
+          text: '高eco素材指引：美妆视频号素材跑量新规解读和优化指引',
+          url: 'https://jenlin0622.github.io/meihong-video-report/',
+        },
+        uploadTip: '上传「高eco素材上线创意」截图，并填写上线账户ID',
+        extraField: { key: 'accountId', label: '素材上线账户ID（英文逗号隔开）', placeholder: '多个用英文逗号 , 隔开', required: true },
         examples: ['assets/exuan/eco-material.jpg'],
+        proofExamples: ['assets/exuan/material-proof-example.jpg'],
       },
       {
         key: 'ads',
@@ -175,8 +182,9 @@ window.HB_EXUAN = {
         score: '0-2分',
         standard: ['① 视频号单开直播间', '② 张贴双11鹅选美妆节贴片'],
         showSticker: true,
-        uploadTip: '上传「单开直播间」截图',
+        uploadTip: '上传「单开直播间」直播截图（需露出贴片）',
         examples: [],
+        proofExamples: ['assets/exuan/live-proof-example.jpg'],
       },
       {
         key: 'biz',
