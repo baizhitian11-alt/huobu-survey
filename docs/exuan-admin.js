@@ -367,6 +367,107 @@
     }).catch(function () { return null; });
   }
 
+  /* ---------- 更新美力值榜单：粘贴 Excel 数据 → 发布到 data 分支 ---------- */
+  var BOARD_PATH = 'data/leaderboard.json';
+
+  /** 解析粘贴的 TSV / 逗号分隔文本（自动跳过表头；兼容行首带序号列） */
+  function parseBoard(text) {
+    var rows = [];
+    String(text || '').split(/\r?\n/).forEach(function (line) {
+      if (!line.trim()) return;
+      var c = line.split(/\t|,/).map(function (x) { return x.trim().replace(/^"|"$/g, ''); });
+      while (c.length && c[c.length - 1] === '') c.pop();
+      // 行首是纯数字序号列（Excel 行号）则去掉
+      if (c.length > 2 && !isNaN(parseFloat(c[0])) && isNaN(parseFloat(c[1]))) c = c.slice(1);
+      if (c.length < 3 || isNaN(parseFloat(c[1]))) return;   // 表头 / 空行
+      var n = function (i) { var v = parseFloat(c[i]); return isNaN(v) ? 0 : v; };
+      var ads = [n(5), n(6), n(7), n(8), n(9)];
+      rows.push({
+        brand: c[0],
+        total: n(1),
+        s: {
+          goods: n(2), bigLive: n(3), material: n(4),
+          ads: ads, adsTotal: ads.reduce(function (a, b) { return a + b; }, 0),
+          local: n(10), biz: n(11),
+        },
+      });
+    });
+    return rows;
+  }
+
+  function boardTsv(data) {
+    var lines = ['品牌\t总美力值\t商品力\t大场力\t素材力\t全店托管\t主页视频助推\t潜客优投\t创意优投\t非视频号流量\t本土力\t经营力'];
+    (data.rows || []).forEach(function (r) {
+      var s = r.s || {};
+      var ads = s.ads || [];
+      lines.push([r.brand, r.total, s.goods, s.bigLive, s.material,
+        ads[0], ads[1], ads[2], ads[3], ads[4], s.local, s.biz].join('\t'));
+    });
+    return lines.join('\n');
+  }
+
+  function boardPreview() {
+    var rows = parseBoard($('#boardText').value);
+    $('#boardPreview').innerHTML = rows.length
+      ? '已识别 <b>' + rows.length + '</b> 个品牌：'
+        + esc(rows.slice(0, 5).map(function (r) { return r.brand + '(' + r.total + ')'; }).join('、'))
+        + (rows.length > 5 ? ' …' : '')
+      : '<span style="color:#c1c8d6">尚未识别到数据（每行一个品牌，Tab 或逗号分隔）</span>';
+  }
+
+  $('#exBtnBoard').addEventListener('click', function () {
+    $('#boardMask').classList.add('show');
+    boardPreview();
+  });
+  $('#boardCancel').addEventListener('click', function () {
+    $('#boardMask').classList.remove('show');
+  });
+  $('#boardText').addEventListener('input', boardPreview);
+  $('#boardLoad').addEventListener('click', function () {
+    var btn = this;
+    btn.disabled = true;
+    fetch('https://raw.githubusercontent.com/' + GHUB.repo() + '/' + BOARD_PATH + '?t=' + Date.now())
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d || !(d.rows || []).length) {
+          alert('当前还没有发布过榜单，直接粘贴 Excel 数据即可');
+          return;
+        }
+        $('#boardText').value = boardTsv(d);
+        boardPreview();
+      })
+      .catch(function () { alert('读取当前榜单失败，可直接粘贴 Excel 数据'); })
+      .finally(function () { btn.disabled = false; });
+  });
+  $('#boardPublish').addEventListener('click', function () {
+    if (!GHUB.enabled()) {
+      alert('当前未配置 token，无法发布榜单；请先按 config.js 里的说明配置 GitHub token。');
+      return;
+    }
+    var rows = parseBoard($('#boardText').value);
+    if (!rows.length) {
+      alert('没解析到数据：请从 Excel「双11加码腾飞排行榜」选中数据区（含表头）复制后整块粘贴');
+      return;
+    }
+    var btn = this;
+    btn.disabled = true;
+    btn.textContent = '发布中…';
+    var payload = {
+      updatedAt: new Date().toLocaleString('zh-CN', { hour12: false }),
+      rows: rows,
+    };
+    var b64 = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+    GHUB.uploadFile(BOARD_PATH, b64).then(function () {
+      $('#exStatus').textContent = '✓ 榜单已发布（' + rows.length + ' 个品牌），客户页刷新即可看到';
+      $('#boardMask').classList.remove('show');
+    }).catch(function (e) {
+      alert('发布失败：' + e.message);
+    }).finally(function () {
+      btn.disabled = false;
+      btn.textContent = '发布榜单';
+    });
+  });
+
   $('#exBtnPull').addEventListener('click', pull);
   $('#exBtnExport').addEventListener('click', exportExcel);
   render();

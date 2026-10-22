@@ -800,6 +800,78 @@
   $('#imgMask').addEventListener('click', function () { this.classList.remove('show'); });
   $('#btnMine').addEventListener('click', loadMine);
 
+  /* ================= 美力值TOP品牌榜单 ================= */
+  /** 六维雷达图（内联 SVG，零依赖）。scores: {key: value}，dims: 配置的维度 */
+  function radarSvg(scores, dims, size) {
+    var cx = size / 2, cy = size / 2, R = size / 2 - 5, N = dims.length;
+    function xy(k, r) {
+      var a = -Math.PI / 2 + k * 2 * Math.PI / N;
+      return (cx + r * Math.cos(a)).toFixed(1) + ' ' + (cy + r * Math.sin(a)).toFixed(1);
+    }
+    function poly(f, attrs) {
+      var p = [], i;
+      for (i = 0; i < N; i++) p.push(xy(i, R * f));
+      return '<polygon points="' + p.join(', ') + '" ' + attrs + '/>';
+    }
+    var g = poly(1, 'fill="none" stroke="#ecdfe7" stroke-width="1"')
+      + poly(0.66, 'fill="none" stroke="#f2e9ee" stroke-width="1"')
+      + poly(0.33, 'fill="none" stroke="#f6f0f3" stroke-width="1"');
+    for (var i = 0; i < N; i++) {
+      g += '<line x1="' + cx + '" y1="' + cy + '" x2="' + xy(i, 1).split(' ')[0]
+        + '" y2="' + xy(i, 1).split(' ')[1] + '" stroke="#f2e9ee" stroke-width="1"/>';
+    }
+    var vp = dims.map(function (d, k) {
+      var v = Math.max(0, Math.min(1, (lbScore(scores, d.key) || 0) / d.max));
+      return xy(k, R * v);
+    }).join(', ');
+    g += '<polygon points="' + vp + '" fill="rgba(217,22,31,.16)" stroke="#d9161f" stroke-width="1.6" stroke-linejoin="round"/>';
+    return '<svg class="lb-radar" width="' + size + '" height="' + size
+      + '" viewBox="0 0 ' + size + ' ' + size + '" aria-hidden="true">' + g + '</svg>';
+  }
+
+  function lbScore(r, key) {
+    if (key !== 'ads') return r[key];
+    if (r.adsTotal != null) return r.adsTotal;
+    return (r.ads || []).reduce(function (a, b) { return a + b; }, 0);
+  }
+
+  function renderLeaderboard(data) {
+    var LB = XC.leaderboard;
+    if (!LB) return;
+    var rows = (data.rows || []).slice().sort(function (a, b) {
+      return (b.total || 0) - (a.total || 0);
+    });
+    if (!rows.length) return;
+    $('#lbTitle').innerHTML = '🔥 ' + esc(LB.title);
+    $('#lbReward').textContent = LB.rewardTip || '';
+    $('#lbNote').textContent = LB.note || '';
+    $('#lbList').innerHTML = rows.map(function (r, i) {
+      var s = r.s || {};
+      var medal = i < 3 ? ['🥇', '🥈', '🥉'][i] : (i + 1);
+      var chips = LB.dims.map(function (d) {
+        return '<span class="lb-chip">' + esc(d.name) + ' <b>' + esc(lbScore(s, d.key)) + '</b></span>';
+      }).join('');
+      return '<div class="lb-row' + (i < 3 ? ' top' : '') + '">'
+        + '<span class="lb-rk">' + medal + '</span>'
+        + radarSvg(s, LB.dims, 76)
+        + '<div class="lb-info"><div class="lb-line1"><span class="lb-brand">' + esc(r.brand || '-')
+        + '</span><span class="lb-total">美力值 <b>' + esc(r.total != null ? r.total : '-') + '</b></span></div>'
+        + '<div class="lb-chips">' + chips + '</div></div></div>';
+    }).join('');
+    $('#lbFoot').innerHTML = (data.updatedAt ? '榜单更新：' + esc(data.updatedAt) + ' · ' : '')
+      + '每周三重新刷榜';
+    $('#lbCard').style.display = '';
+  }
+
+  function loadLeaderboard() {
+    var LB = XC.leaderboard;
+    if (!LB || !GHUB.repo() || !$('#lbCard')) return;
+    fetch('https://raw.githubusercontent.com/' + GHUB.repo() + '/data/leaderboard.json?t=' + Date.now())
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) { if (d && d.rows && d.rows.length) renderLeaderboard(d); })
+      .catch(function () { /* 无榜单就不展示 */ });
+  }
+
   /* ================= 事件 & init ================= */
   var brandTimer = null;
   $('#brand').addEventListener('input', function () {
@@ -824,5 +896,6 @@
   $('#remark').value = state.remark;
   renderQuestions();
   renderRules();
+  loadLeaderboard();
   if (state.brand) loadMine();
 })();

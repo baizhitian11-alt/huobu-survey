@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>货补摸排 · 汇总导出（运营用）</title>
-<link rel="stylesheet" href="style.css?v=20261012d" />
+<link rel="stylesheet" href="style.css?v=20261022a" />
 </head>
 <body>
 <div class="page">
@@ -62,6 +62,7 @@
     <div class="admin-bar">
       <button class="btn primary" id="exBtnPull">刷新鹅选数据</button>
       <button class="btn ghost" id="exBtnExport">导出鹅选 Excel</button>
+      <button class="btn ghost" id="exBtnBoard">更新榜单</button>
       <a class="btn ghost" href="exuan.html" target="_blank">打开客户填写页</a>
       <span class="hint" id="exStatus"></span>
     </div>
@@ -77,13 +78,34 @@
   </section>
 </div>
 
-<script src="config.js?v=20261012d"></script>
-<script src="exuan-config.js?v=20261012d"></script>
-<script src="schema.js?v=20261012d"></script>
-<script src="xlsx.js?v=20261012d"></script>
-<script src="preview.js?v=20261012d"></script>
-<script src="gh.js?v=20261012d"></script>
-<script src="merge.js?v=20261012d"></script>
-<script src="exuan-admin.js?v=20261012d"></script>
+<!-- 更新美力值榜单：粘贴 Excel 排行榜数据 → 发布到仓库 data 分支，客户页即时展示 -->
+<div class="mask" id="boardMask">
+  <div class="vmm">
+    <div class="vmm-hd"><b>更新美力值榜单</b></div>
+    <div class="vmm-tip">打开 Excel「双11加码腾飞排行榜」，选中数据区（含表头）复制，直接粘贴到下面 → 点「发布榜单」。<br/>
+      列顺序：品牌 总美力值 商品力 大场力 素材力 全店托管 主页视频助推 潜客优投 创意优投 非视频号流量 本土力 经营力</div>
+    <div style="padding:0 18px">
+      <textarea class="board-text" id="boardText" rows="12" placeholder="品牌	总美力值	商品力	大场力	素材力	全店托管	主页视频助推	潜客优投	创意优投	非视频号流量	本土力	经营力
+珀莱雅	24	2	6	6	2	0	2	0	2	2	2"></textarea>
+    </div>
+    <div class="board-preview" id="boardPreview"></div>
+    <div class="vmm-ft">
+      <button class="btn ghost sm" id="boardLoad">读取当前榜单</button>
+      <span class="vmm-sp"></span>
+      <button class="btn ghost" id="boardCancel">取消</button>
+      <button class="btn primary" id="boardPublish">发布榜单</button>
+    </div>
+  </div>
+</div>
+
+<script src="config.js?v=20261022a"></script>
+<script src="exuan-config.js?v=20261022a"></script>
+<script src="schema.js?v=20261022a"></script>
+<script src="xlsx.js?v=20261022a"></script>
+<script src="preview.js?v=20261022a"></script>
+<script src="gh.js?v=20261022a"></script>
+<script src="merge.js?v=20261022a"></script>
+<script src="exuan-admin.js?v=20261022a"></script>
+
 </body>
 </html>

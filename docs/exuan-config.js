@@ -27,6 +27,25 @@ window.HB_EXUAN = {
     ],
   },
 
+  /* ── 美力值榜单（客户页最上方展示）──
+   * 数据存放在仓库 data 分支的 data/leaderboard.json，
+   * 运营侧在 merge.html 工作台点「更新榜单」，粘贴 Excel 排行榜数据一键发布（每周刷榜）。
+   */
+  leaderboard: {
+    title: '美力值TOP品牌榜单',
+    rewardTip: '10.23号～10.30号享受加码腾飞！',
+    note: '如未上榜，请别灰心，可在下方「二、排位赛，传凭证，领加码激励！」部分继续上传凭证，下周重新刷榜',
+    /* 六维图维度（key 对应 data/leaderboard.json 里 s 的字段；ads 为投放力总分） */
+    dims: [
+      { key: 'goods', name: '商品力', max: 2 },
+      { key: 'bigLive', name: '大场力', max: 6 },
+      { key: 'material', name: '素材力', max: 8 },
+      { key: 'ads', name: '投放力', max: 10 },
+      { key: 'local', name: '本土力', max: 2 },
+      { key: 'biz', name: '经营力', max: 2 },
+    ],
+  },
+
   /* ── 上半部分：盘直播，报规划，获基础腾飞 ──
    * 截止 10.13，全部必填。按需求「不卡死」：过了时间仍可提交，标记为「逾期提交」。
    */
