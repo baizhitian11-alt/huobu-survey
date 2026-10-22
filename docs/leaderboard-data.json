@@ -9,11 +9,11 @@
     "bigLive": 6,
     "material": 6,
     "ads": [
-     6,
      0,
+     2,
      0,
-     0,
-     0
+     2,
+     2
     ],
     "adsTotal": 6,
     "local": 2,
@@ -28,11 +28,11 @@
     "bigLive": 6,
     "material": 6,
     "ads": [
-     6,
+     2,
      0,
+     2,
      0,
-     0,
-     0
+     2
     ],
     "adsTotal": 6,
     "local": 2,
@@ -47,11 +47,11 @@
     "bigLive": 6,
     "material": 6,
     "ads": [
-     6,
      0,
+     2,
+     2,
      0,
-     0,
-     0
+     2
     ],
     "adsTotal": 6,
     "local": 2,
@@ -66,11 +66,11 @@
     "bigLive": 6,
     "material": 6,
     "ads": [
-     8,
      0,
-     0,
-     0,
-     0
+     2,
+     2,
+     2,
+     2
     ],
     "adsTotal": 8,
     "local": 0,
@@ -85,11 +85,11 @@
     "bigLive": 2,
     "material": 6,
     "ads": [
-     8,
+     2,
+     2,
+     2,
      0,
-     0,
-     0,
-     0
+     2
     ],
     "adsTotal": 8,
     "local": 2,
@@ -104,10 +104,10 @@
     "bigLive": 2,
     "material": 6,
     "ads": [
-     6,
+     2,
+     2,
      0,
-     0,
-     0,
+     2,
      0
     ],
     "adsTotal": 6,
@@ -123,13 +123,13 @@
     "bigLive": 4,
     "material": 4,
     "ads": [
-     4,
      0,
      0,
      0,
-     0
+     0,
+     2
     ],
-    "adsTotal": 4,
+    "adsTotal": 2,
     "local": 2,
     "biz": 2
    }
@@ -142,11 +142,11 @@
     "bigLive": 2,
     "material": 6,
     "ads": [
-     4,
+     2,
      0,
      0,
      0,
-     0
+     2
     ],
     "adsTotal": 4,
     "local": 2,
@@ -161,13 +161,13 @@
     "bigLive": 2,
     "material": 8,
     "ads": [
-     0,
-     0,
+     2,
+     2,
      0,
      0,
      0
     ],
-    "adsTotal": 0,
+    "adsTotal": 4,
     "local": 2,
     "biz": 0
    }
@@ -199,15 +199,15 @@
     "bigLive": 4,
     "material": 0,
     "ads": [
-     4,
      0,
      0,
      0,
-     0
+     0,
+     2
     ],
-    "adsTotal": 4,
+    "adsTotal": 2,
     "local": 2,
-    "biz": 0
+    "biz": 2
    }
   },
   {
@@ -218,11 +218,11 @@
     "bigLive": 6,
     "material": 0,
     "ads": [
-     2,
      0,
      0,
      0,
-     0
+     0,
+     2
     ],
     "adsTotal": 2,
     "local": 2,
@@ -237,15 +237,15 @@
     "bigLive": 6,
     "material": 0,
     "ads": [
-     4,
      0,
+     2,
      0,
      0,
      0
     ],
-    "adsTotal": 4,
+    "adsTotal": 2,
     "local": 0,
-    "biz": 0
+    "biz": 2
    }
   },
   {
@@ -256,10 +256,10 @@
     "bigLive": 6,
     "material": 0,
     "ads": [
+     0,
+     0,
+     0,
      2,
-     0,
-     0,
-     0,
      0
     ],
     "adsTotal": 2,
@@ -275,11 +275,11 @@
     "bigLive": 0,
     "material": 0,
     "ads": [
-     8,
      0,
-     0,
-     0,
-     0
+     2,
+     2,
+     2,
+     2
     ],
     "adsTotal": 8,
     "local": 0,
@@ -294,9 +294,9 @@
     "bigLive": 0,
     "material": 6,
     "ads": [
+     0,
+     0,
      2,
-     0,
-     0,
      0,
      0
     ],
@@ -313,13 +313,222 @@
     "bigLive": 0,
     "material": 0,
     "ads": [
-     10,
-     0,
-     0,
-     0,
-     0
+     2,
+     2,
+     2,
+     2,
+     2
     ],
     "adsTotal": 10,
+    "local": 0,
+    "biz": 0
+   }
+  },
+  {
+   "brand": "慕可",
+   "total": 8,
+   "s": {
+    "goods": 0,
+    "bigLive": 0,
+    "material": 0,
+    "ads": [
+     2,
+     2,
+     2,
+     0,
+     2
+    ],
+    "adsTotal": 8,
+    "local": 0,
+    "biz": 0
+   }
+  },
+  {
+   "brand": "橘朵",
+   "total": 8,
+   "s": {
+    "goods": 2,
+    "bigLive": 0,
+    "material": 0,
+    "ads": [
+     2,
+     2,
+     0,
+     0,
+     2
+    ],
+    "adsTotal": 6,
+    "local": 0,
+    "biz": 0
+   }
+  },
+  {
+   "brand": "羽素",
+   "total": 8,
+   "s": {
+    "goods": 0,
+    "bigLive": 0,
+    "material": 0,
+    "ads": [
+     2,
+     2,
+     2,
+     0,
+     2
+    ],
+    "adsTotal": 8,
+    "local": 0,
+    "biz": 0
+   }
+  },
+  {
+   "brand": "必扬",
+   "total": 6,
+   "s": {
+    "goods": 2,
+    "bigLive": 0,
+    "material": 0,
+    "ads": [
+     0,
+     2,
+     0,
+     0,
+     2
+    ],
+    "adsTotal": 4,
+    "local": 0,
+    "biz": 0
+   }
+  },
+  {
+   "brand": "韩束",
+   "total": 6,
+   "s": {
+    "goods": 2,
+    "bigLive": 0,
+    "material": 0,
+    "ads": [
+     0,
+     2,
+     0,
+     0,
+     2
+    ],
+    "adsTotal": 4,
+    "local": 0,
+    "biz": 0
+   }
+  },
+  {
+   "brand": "秘地",
+   "total": 6,
+   "s": {
+    "goods": 0,
+    "bigLive": 0,
+    "material": 0,
+    "ads": [
+     2,
+     0,
+     2,
+     0,
+     2
+    ],
+    "adsTotal": 6,
+    "local": 0,
+    "biz": 0
+   }
+  },
+  {
+   "brand": "不老谜语",
+   "total": 6,
+   "s": {
+    "goods": 0,
+    "bigLive": 0,
+    "material": 0,
+    "ads": [
+     0,
+     2,
+     2,
+     0,
+     2
+    ],
+    "adsTotal": 6,
+    "local": 0,
+    "biz": 0
+   }
+  },
+  {
+   "brand": "上海家化",
+   "total": 6,
+   "s": {
+    "goods": 2,
+    "bigLive": 0,
+    "material": 0,
+    "ads": [
+     0,
+     2,
+     0,
+     0,
+     2
+    ],
+    "adsTotal": 4,
+    "local": 0,
+    "biz": 0
+   }
+  },
+  {
+   "brand": "蒂洛薇",
+   "total": 6,
+   "s": {
+    "goods": 0,
+    "bigLive": 0,
+    "material": 0,
+    "ads": [
+     0,
+     0,
+     2,
+     2,
+     2
+    ],
+    "adsTotal": 6,
+    "local": 0,
+    "biz": 0
+   }
+  },
+  {
+   "brand": "原生密码",
+   "total": 6,
+   "s": {
+    "goods": 0,
+    "bigLive": 0,
+    "material": 0,
+    "ads": [
+     0,
+     2,
+     2,
+     0,
+     2
+    ],
+    "adsTotal": 6,
+    "local": 0,
+    "biz": 0
+   }
+  },
+  {
+   "brand": "美尚",
+   "total": 6,
+   "s": {
+    "goods": 0,
+    "bigLive": 0,
+    "material": 0,
+    "ads": [
+     0,
+     2,
+     2,
+     0,
+     2
+    ],
+    "adsTotal": 6,
     "local": 0,
     "biz": 0
    }
