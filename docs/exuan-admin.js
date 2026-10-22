@@ -113,8 +113,10 @@
         return '<div class="vm-line">' + (n ? '<span class="ok">✓</span>' : '<span class="miss">✗</span>')
           + ' <b style="font-weight:600">' + esc(m.name) + '</b> ' + n + '张' + (m.max ? '/最多' + m.max : '') + ' '
           + got.map(function (v, i) {
-            return '<a href="' + esc(v.url) + '" target="_blank" title="' + esc(v.name + ' · ' + fmtT(v.uploadedAt)) + '">'
-              + (i + 1) + '</a>';
+            var pf = v.perFile ? Object.keys(v.perFile).map(function (k) { return v.perFile[k]; })
+              .filter(Boolean).join(' · ') : '';
+            return '<a href="' + esc(v.url) + '" target="_blank" title="'
+              + esc(v.name + ' · ' + fmtT(v.uploadedAt) + (pf ? ' · ' + pf : '')) + '">' + (i + 1) + '</a>';
           }).join(' ')
           + (g.extra[m.key] ? ' <i>' + esc((m.extraField || {}).label || '附加') + '：' + esc(g.extra[m.key]) + '</i>' : '')
           + '</div>';
@@ -255,7 +257,14 @@
 
       /* ===== Sheet2：凭证明细（大图，每个文件一行） ===== */
       var BOX_W = 300, BOX_H = 340;
-      var h2 = ['品牌名称', '排位事项', '凭证图片（点图看原图）', '原图链接', '文件名', '上传时间', '附加信息'];
+      // 每张凭证单独填的信息（如大场力的 大场时间 / 大场主题）→ 追加成列
+      var pfKeys = [];
+      items.forEach(function (it) {
+        var pf = it.v.perFile || {};
+        Object.keys(pf).forEach(function (k) { if (pf[k] && pfKeys.indexOf(k) < 0) pfKeys.push(k); });
+      });
+      var h2 = ['品牌名称', '排位事项', '凭证图片（点图看原图）', '原图链接', '文件名', '上传时间', '附加信息']
+        .concat(pfKeys);
       var r2 = [], img2 = [], link2 = [], ht2 = {};
       items.forEach(function (it, i) {
         var v = it.v, im = imgs[i], row = i + 1, cellText = '';
@@ -270,14 +279,16 @@
           ht2[row] = 40;
         }
         r2.push([it.g.brand, v.moduleName || v.module, cellText, v.url ? '打开原图' : '',
-          v.name || '', fmtT(v.uploadedAt), ex]);
+          v.name || '', fmtT(v.uploadedAt), ex]
+          .concat(pfKeys.map(function (k) { return (v.perFile || {})[k] || ''; })));
         if (v.url) link2.push({ row: row, col: 3, url: v.url });
       });
 
       window.HBXlsx.downloadXlsx([
         { name: '报规划及凭证（含图片）', rows: [h1].concat(r1), cols: cols1,
           images: img1, links: link1, rowHeights: ht1, wrap: true },
-        { name: '凭证明细（大图）', rows: [h2].concat(r2), cols: [16, 10, 44, 11, 26, 13, 20],
+        { name: '凭证明细（大图）', rows: [h2].concat(r2),
+          cols: [16, 10, 44, 11, 26, 13, 20].concat(pfKeys.map(function (k) { return k.length > 6 ? 22 : 14; })),
           images: img2, links: link2, rowHeights: ht2, wrap: true },
       ], '鹅选美妆节_' + BRANDS.length + '个品牌_' + new Date().toISOString().slice(0, 10) + '.xlsx');
 

@@ -104,6 +104,7 @@ window.HB_EXUAN = {
    * showSticker：在标准说明下展示贴片预览图 + 下载链接
    * max：数量上限提示（如大场力最多 6 场），仅提示不强制
    * extraField：该事项需附带填写的信息（如素材力的上线账户ID）
+   * perFileFields：每张凭证各自要填的信息（如大场力的 大场时间 / 大场主题），选完文件后弹窗逐张填写
    * noUpload：无需上传，官方校验（只展示标准）
    * examples：标准示例图（docs/assets/exuan/ 下）
    * proofExamples：凭证提供示例（告诉客户该上传什么样的截图），显示在上传格里
@@ -137,8 +138,14 @@ window.HB_EXUAN = {
         score: '0-6分',
         standard: ['① 人 / 货 / 场任一维度升级', '② 张贴双11鹅选美妆节贴片'],
         showSticker: true,
-        uploadTip: '上传「大场」直播截图（需露出贴片，最多 6 场）',
+        uploadTip: '上传「大场」直播截图（需露出贴片，最多 6 场）；选完图后需逐张填写大场时间与主题',
         max: 6,
+        /* 每张凭证单独填写的信息：选完文件后弹窗逐张填写，随这张凭证一起存 */
+        perFileTip: '每张截图对应一场大场，请逐张填写下面的大场时间与主题，确认后一起上传',
+        perFileFields: [
+          { key: 'liveDate', label: '大场时间', type: 'date', required: true, min: '2026-10-12', max: '2026-11-15' },
+          { key: 'liveTheme', label: '大场主题', type: 'text', required: true, placeholder: '如：双11美妆专场 · 全场5折' },
+        ],
         examples: ['assets/exuan/live-upgrade.jpg'],
         proofExamples: ['assets/exuan/live-proof-example.jpg'],
       },

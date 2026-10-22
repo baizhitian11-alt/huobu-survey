@@ -367,6 +367,12 @@
     renderAllCells();
   }
 
+  /** 单张凭证填的信息，如「11月11日 · 双11美妆专场」 */
+  function perFileText(v) {
+    var pf = v.perFile || {};
+    return Object.keys(pf).map(function (k) { return pf[k]; }).filter(Boolean).join(' · ');
+  }
+
   /* ---- 单个事项的上传格：已传缩略图 + 上传中 + 按钮 ---- */
   function renderCell(key) {
     var el = document.getElementById('cu-' + key);
@@ -377,14 +383,21 @@
     var busy = BUSY[key] || [];
     var h = '';
     if (list.length || busy.length) {
-      h += '<div class="cu-list">' + list.map(function (v) {
-        return '<a class="cu-it" href="' + esc(v.url) + '" target="_blank" title="' + esc(v.name + ' · ' + fmtT(v.uploadedAt)) + '">'
+      h += '<div class="cu-list">' + list.map(function (v, vi) {
+        var tip = (vi + 1) + '. ' + v.name + ' · ' + fmtT(v.uploadedAt)
+          + (perFileText(v) ? ' · ' + perFileText(v) : '');
+        return '<a class="cu-it" href="' + esc(v.url) + '" target="_blank" title="' + esc(tip) + '">'
           + (isImgName(v.path || v.name) ? '<img src="' + esc(v.__local || v.url) + '" loading="lazy" alt=""/>'
             : '<span class="cu-pdf">PDF</span>') + '</a>';
       }).join('') + busy.map(function (b) {
         return '<span class="cu-it busy">' + (b.preview ? '<img src="' + b.preview + '" alt=""/>'
           : '<span class="cu-pdf">PDF</span>') + '<i>上传中</i></span>';
       }).join('') + '</div>';
+      var metas = list.map(function (v, vi) {
+        var t = perFileText(v);
+        return t ? (vi + 1) + '. ' + t : '';
+      }).filter(Boolean);
+      if (metas.length) h += '<div class="cu-metas">' + metas.map(esc).join('<br/>') + '</div>';
     }
     h += '<div class="cu-bar"><button class="btn sm ' + (list.length ? 'ghost' : 'primary') + ' cu-btn" data-mod="'
       + esc(key) + '"' + (busy.length ? ' disabled' : '') + '>'
@@ -461,12 +474,135 @@
     c.classList.remove('over');
     var key = c.dataset.mod;
     if ((BUSY[key] || []).length) return;
-    if (e.dataTransfer && e.dataTransfer.files.length && readyFor(key)) uploadFiles(key, e.dataTransfer.files);
+    if (e.dataTransfer && e.dataTransfer.files.length && readyFor(key)) startUpload(key, e.dataTransfer.files);
   });
   $('#vFile').addEventListener('change', function () {
     var fs = Array.prototype.slice.call(this.files || []);
     this.value = '';
-    if (pickingMod && fs.length) uploadFiles(pickingMod, fs);
+    if (pickingMod && fs.length) startUpload(pickingMod, fs);
+  });
+
+  /* ---- 选完文件：若该事项需要逐张填信息，先弹窗填写，再一起上传 ---- */
+  function startUpload(key, files) {
+    var fs = Array.prototype.slice.call(files || []);
+    if (!fs.length || !readyFor(key)) return;
+    pickMeta(key, fs).then(function (entries) {
+      if (entries && entries.length) uploadFiles(key, entries);
+    });
+  }
+
+  /** 大场时间的默认值：优先用上半部分填的大场日期，其次今天（限制在活动周期内） */
+  function todayInRange() {
+    var q = (XC.questions || []).filter(function (x) { return x.key === 'bigLiveDate'; })[0] || {};
+    var d = new Date();
+    var s = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+    if (q.min && s < q.min) return q.min;
+    if (q.max && s > q.max) return q.max;
+    return s;
+  }
+
+  var metaResolve = null, metaUrls = [], pickMetaFiles = [], pickMetaKey = '';
+  function closeMeta(entries) {
+    var r = metaResolve;
+    metaResolve = null;
+    $('#vMetaMask').classList.remove('show');
+    metaUrls.forEach(function (u) { URL.revokeObjectURL(u); });
+    metaUrls = [];
+    $('#vmmList').innerHTML = '';
+    if (r) r(entries || []);
+  }
+
+  /**
+   * 逐张填写附加信息（perFileFields）。
+   * 返回 [{file, meta:{label: value}}]；该事项没有 perFileFields 时直接原样返回。
+   */
+  function pickMeta(key, files) {
+    var m = modBy(key);
+    var fields = m.perFileFields || [];
+    if (!fields.length) {
+      return Promise.resolve(files.map(function (f) { return { file: f, meta: {} }; }));
+    }
+    return new Promise(function (resolve) {
+      metaResolve = resolve;
+      pickMetaKey = key;
+      pickMetaFiles = files.slice();
+      var ds = toDates(state.answers.bigLiveDate);
+      $('#vmmTitle').textContent = m.name + ' · 逐张填写（共 ' + files.length + ' 张）';
+      $('#vmmTip').textContent = m.perFileTip || '每张凭证单独填写，确认后一起上传';
+      $('#vmmList').innerHTML = files.map(function (f, i) {
+        var prev = /^image\//.test(f.type) ? URL.createObjectURL(f) : '';
+        if (prev) metaUrls.push(prev);
+        return '<div class="vmm-row" data-i="' + i + '">'
+          + '<div class="vmm-th">' + (prev ? '<img src="' + esc(prev) + '" alt=""/>'
+            : '<span class="cu-pdf">PDF</span>') + '</div>'
+          + '<div class="vmm-fields"><div class="vmm-no">第 ' + (i + 1) + ' 张 · ' + esc(f.name) + '</div>'
+          + fields.map(function (fd) {
+            var val = fd.type === 'date' ? (ds[i] || ds[0] || todayInRange()) : '';
+            return '<label class="vmm-fd"><span>' + esc(fd.label)
+              + (fd.required ? ' <i class="req">*</i>' : '') + '</span>'
+              + '<input class="q-input" data-fk="' + esc(fd.key) + '" type="'
+              + (fd.type === 'date' ? 'date' : 'text') + '" value="' + esc(val) + '"'
+              + ' placeholder="' + esc(fd.placeholder || '') + '"'
+              + (fd.type === 'date' && fd.min ? ' min="' + esc(fd.min) + '"' : '')
+              + (fd.type === 'date' && fd.max ? ' max="' + esc(fd.max) + '"' : '')
+              + '/></label>';
+          }).join('')
+          + '</div><button class="vmm-rm" title="移除这张">×</button></div>';
+      }).join('');
+      $('#vMetaMask').classList.add('show');
+    });
+  }
+
+  function metaRows() {
+    return Array.prototype.slice.call($('#vmmList').querySelectorAll('.vmm-row'));
+  }
+
+  $('#vmmList').addEventListener('click', function (e) {
+    if (!e.target.closest('.vmm-rm')) return;
+    var row = e.target.closest('.vmm-row');
+    row.parentNode.removeChild(row);
+    metaRows().forEach(function (r, i) {
+      var no = r.querySelector('.vmm-no');
+      if (no) no.textContent = no.textContent.replace(/第\s*\d+\s*张/, '第 ' + (i + 1) + ' 张');
+    });
+    if (!metaRows().length) closeMeta([]);
+  });
+
+  $('#vmmCopy').addEventListener('click', function () {
+    var rows = metaRows();
+    if (rows.length < 2) return;
+    rows[0].querySelectorAll('input[data-fk]').forEach(function (inp) {
+      var fk = inp.dataset.fk;
+      rows.slice(1).forEach(function (r) {
+        var t = r.querySelector('input[data-fk="' + fk + '"]');
+        if (t) t.value = inp.value;
+      });
+    });
+  });
+
+  $('#vmmCancel').addEventListener('click', function () { closeMeta([]); });
+  $('#vmmOk').addEventListener('click', function () {
+    var m = modBy(pickMetaKey) || {};
+    var fields = m.perFileFields || [];
+    var out = [], bad = [], firstBad = null;
+    metaRows().forEach(function (row, i) {
+      var meta = {};
+      fields.forEach(function (fd) {
+        var inp = row.querySelector('input[data-fk="' + fd.key + '"]');
+        meta[fd.label] = inp ? String(inp.value || '').trim() : '';
+        if (fd.required && !meta[fd.label]) {
+          bad.push('第 ' + (i + 1) + ' 张的「' + fd.label + '」');
+          if (!firstBad) firstBad = inp;
+        }
+      });
+      out.push({ file: pickMetaFiles[+row.dataset.i], meta: meta });
+    });
+    if (bad.length) {
+      alert('还有信息没填：\n· ' + bad.join('\n· '));
+      if (firstBad) firstBad.focus();
+      return;
+    }
+    closeMeta(out);
   });
 
   /* ---- 上传实现 ---- */
@@ -537,7 +673,7 @@
 
   function safeName(s) { return String(s || '').replace(/[\\/:*?"<>|#%\s]+/g, '-').slice(0, 40); }
 
-  function uploadOne(issueNo, brand, key, file) {
+  function uploadOne(issueNo, brand, key, file, meta) {
     var mod = modBy(key), f2;
     return compressIfNeeded(file).then(function (f) {
       f2 = f;
@@ -563,27 +699,34 @@
         v.extra = {};
         v.extra[mod.extraField.key] = String((state.extra || {})[key] || '').trim();
       }
+      if (meta) {   // 每张凭证各自填的信息（如大场时间 / 大场主题）
+        var pf = {};
+        Object.keys(meta).forEach(function (k) { if (meta[k]) pf[k] = meta[k]; });
+        if (Object.keys(pf).length) v.perFile = pf;
+      }
       return GHUB.addComment(issueNo, GHUB.voucherCommentBody(v)).then(function () { return v; });
     });
   }
 
-  function uploadFiles(key, files) {
+  function uploadFiles(key, entries) {
     var brand = state.brand.trim();
     var maxMB = XC.voucher.maxMB || 25, maxB = maxMB * 1048576, valid = [], bad = [];
-    Array.prototype.forEach.call(files, function (f) {
+    (entries || []).forEach(function (en) {
+      var f = en.file;
       var isImg = /^image\//.test(f.type) || /\.(heic|heif)$/i.test(f.name);
       var isPdf = f.type === 'application/pdf' || /\.pdf$/i.test(f.name);
       if (!isImg && !isPdf) bad.push(f.name + '（仅支持图片 / PDF）');
       // 图片会先压缩再上传，原图放宽到 100MB；PDF 不压缩，按上限校验
       else if (isPdf && f.size > maxB) bad.push(f.name + '（PDF 超过 ' + maxMB + 'MB，请压缩后再传）');
       else if (isImg && f.size > 100 * 1048576) bad.push(f.name + '（图片超过 100MB）');
-      else valid.push(f);
+      else valid.push(en);
     });
     if (bad.length) alert('以下文件未上传：\n· ' + bad.join('\n· '));
     if (!valid.length) return;
 
-    var items = valid.map(function (f) {
-      return { name: f.name, preview: /^image\//.test(f.type) ? URL.createObjectURL(f) : '' };
+    var items = valid.map(function (en) {
+      return { name: en.file.name,
+        preview: /^image\//.test(en.file.type) ? URL.createObjectURL(en.file) : '' };
     });
     BUSY[key] = items.slice();
     MSG[key] = null;
@@ -592,15 +735,15 @@
     var ok = 0, fail = 0, errs = [];
     findIssue(brand, true).then(function (no) {
       var chain = Promise.resolve();
-      valid.forEach(function (f, i) {
+      valid.forEach(function (en, i) {
         chain = chain.then(function () {
-          return uploadOne(no, brand, key, f).then(function (v) {
+          return uploadOne(no, brand, key, en.file, en.meta).then(function (v) {
             ok++;
             v.__local = items[i].preview;   // 刚传的先用本地预览，避免 CDN 延迟看不到图
             MINE.push(v);
           }, function (e) {
             fail++;
-            errs.push(f.name + '：' + e.message);
+            errs.push(en.file.name + '：' + e.message);
           }).then(function () {
             BUSY[key] = (BUSY[key] || []).filter(function (x) { return x !== items[i]; });
             renderCell(key);
@@ -642,7 +785,10 @@
       got.forEach(function (v) {
         paths[v.path] = 1;
         var ev = v.extra && v.extra[Object.keys(v.extra)[0]];
-        if (ev) { state.extra = state.extra || {}; state.extra[v.module] = ev; }
+        if (ev && (modBy(v.module) || {}).extraField) {
+          state.extra = state.extra || {};
+          state.extra[v.module] = ev;
+        }
       });
       // 用此刻的本地记录合并（查询期间新传成功的也要保留，不能用发起查询时的快照）
       var localNow = MINE.filter(function (v) { return v.__local && v.brand === brand; });

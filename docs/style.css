@@ -797,3 +797,42 @@ table.xls td.empty { background: #fcfcfd; }
 }
 .rk-guide { display: inline-block; margin-top: 4px; font-size: 12.5px; color: #2b6cff; text-decoration: none; }
 .rk-guide:hover { text-decoration: underline; }
+
+/* ==== 鹅选：每张凭证逐张填信息（大场时间 / 大场主题） ==== */
+.vmm {
+  background: #fff; border-radius: 14px; width: 100%; max-width: 560px;
+  max-height: 86vh; display: flex; flex-direction: column; overflow: hidden;
+}
+.vmm-hd { padding: 16px 18px 6px; font-size: 15.5px; }
+.vmm-tip { padding: 0 18px 10px; font-size: 12.5px; color: #7a8399; line-height: 1.6; }
+.vmm-list { padding: 0 18px; overflow: auto; flex: 1 1 auto; }
+.vmm-row {
+  display: flex; gap: 10px; align-items: flex-start; padding: 10px 0;
+  border-top: 1px solid #f0f2f7;
+}
+.vmm-row:first-child { border-top: none; }
+.vmm-th {
+  flex: 0 0 62px; width: 62px; height: 62px; border-radius: 8px; overflow: hidden;
+  border: 1px solid #e6ebf5; background: #f4f6fa;
+}
+.vmm-th img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.vmm-fields { flex: 1 1 auto; min-width: 0; }
+.vmm-no { font-size: 12.5px; color: #7a8399; margin-bottom: 6px; word-break: break-all; }
+.vmm-fd { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.vmm-fd > span { flex: 0 0 66px; font-size: 13px; }
+.vmm-fd .q-input { flex: 1 1 auto; min-width: 0; }
+.vmm-rm {
+  flex: 0 0 auto; border: none; background: none; color: #b3bac9; font-size: 18px;
+  line-height: 1; cursor: pointer; width: 24px; height: 24px; border-radius: 50%;
+}
+.vmm-rm:hover { background: #fff1f0; color: #d9161f; }
+.vmm-ft {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 12px 18px 16px; border-top: 1px solid #f0f2f7; background: #fcfcfe;
+}
+.vmm-sp { flex: 1 1 auto; }
+.cu-metas { font-size: 11.5px; color: #45506b; line-height: 1.7; margin: -2px 0 6px; }
+@media (max-width: 640px) {
+  .vmm-fd { flex-direction: column; align-items: stretch; gap: 4px; }
+  .vmm-fd > span { flex: none; }
+}

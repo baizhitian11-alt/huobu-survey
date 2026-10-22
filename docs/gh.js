@@ -387,6 +387,8 @@
   function voucherCommentBody(v) {
     var kb = v.size ? Math.round(v.size / 1024) + 'KB' : '';
     var extra = v.extra ? Object.keys(v.extra).map(function (k) { return k + '：' + v.extra[k]; }).join('；') : '';
+    /* 每张凭证各自填的信息（如 大场时间 / 大场主题） */
+    var per = v.perFile ? Object.keys(v.perFile).map(function (k) { return k + '：' + v.perFile[k]; }).join('；') : '';
     var isImg = /\.(png|jpe?g|webp|gif)$/i.test(v.path || v.name || '');
     return [
       '**凭证上传** · ' + (v.brand || '-') + ' · **' + (v.moduleName || v.module || '')
@@ -394,6 +396,7 @@
       '',
       '- 文件：[' + v.name + '](' + v.url + ')' + (kb ? '（' + kb + '）' : ''),
       extra ? '- ' + extra : '',
+      per ? '- ' + per : '',
       isImg ? '\n![' + (v.slotName || v.name) + '](' + v.url + ')' : '',
       '',
       '<!-- 以下为机器读取用，请勿修改 -->',
