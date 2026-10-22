@@ -368,7 +368,9 @@
   }
 
   /* ---------- 更新美力值榜单：粘贴 Excel 数据 → 发布到 data 分支 ---------- */
-  var BOARD_PATH = 'data/leaderboard.json';
+  /* 榜单文件放在站点 docs/ 下（同源读取，不受 raw.githubusercontent 访问限制） */
+  var BOARD_PATH = 'docs/leaderboard-data.json';
+  var BOARD_REL = 'leaderboard-data.json';
 
   /** 解析粘贴的 TSV / 逗号分隔文本（自动跳过表头；兼容行首带序号列） */
   function parseBoard(text) {
@@ -426,7 +428,7 @@
   $('#boardLoad').addEventListener('click', function () {
     var btn = this;
     btn.disabled = true;
-    fetch('https://raw.githubusercontent.com/' + GHUB.repo() + '/' + BOARD_PATH + '?t=' + Date.now())
+    fetch(BOARD_REL + '?t=' + Date.now())
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) {
         if (!d || !(d.rows || []).length) {
@@ -456,9 +458,9 @@
       updatedAt: new Date().toLocaleString('zh-CN', { hour12: false }),
       rows: rows,
     };
-    var b64 = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
-    GHUB.uploadFile(BOARD_PATH, b64).then(function () {
-      $('#exStatus').textContent = '✓ 榜单已发布（' + rows.length + ' 个品牌），客户页刷新即可看到';
+    var b64 = btoa(unescape(encodeURIComponent(JSON.stringify(payload, null, 1))));
+    GHUB.putSiteFile(BOARD_PATH, b64, 'leaderboard: 更新美力值TOP品牌榜单').then(function () {
+      $('#exStatus').textContent = '✓ 榜单已发布（' + rows.length + ' 个品牌），等站点构建 1 分钟后刷新客户页';
       $('#boardMask').classList.remove('show');
     }).catch(function (e) {
       alert('发布失败：' + e.message);

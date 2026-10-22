@@ -865,8 +865,9 @@
 
   function loadLeaderboard() {
     var LB = XC.leaderboard;
-    if (!LB || !GHUB.repo() || !$('#lbCard')) return;
-    fetch('https://raw.githubusercontent.com/' + GHUB.repo() + '/data/leaderboard.json?t=' + Date.now())
+    if (!LB || !$('#lbCard')) return;
+    // 同源静态文件（由工作台「更新榜单」发布），不依赖 raw.githubusercontent
+    fetch('leaderboard-data.json?t=' + Date.now())
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) { if (d && d.rows && d.rows.length) renderLeaderboard(d); })
       .catch(function () { /* 无榜单就不展示 */ });

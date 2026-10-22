@@ -1,0 +1,328 @@
+{
+ "updatedAt": "2026-10-22",
+ "rows": [
+  {
+   "brand": "珀莱雅",
+   "total": 24,
+   "s": {
+    "goods": 2,
+    "bigLive": 6,
+    "material": 6,
+    "ads": [
+     6,
+     0,
+     0,
+     0,
+     0
+    ],
+    "adsTotal": 6,
+    "local": 2,
+    "biz": 2
+   }
+  },
+  {
+   "brand": "薇诺娜",
+   "total": 24,
+   "s": {
+    "goods": 2,
+    "bigLive": 6,
+    "material": 6,
+    "ads": [
+     6,
+     0,
+     0,
+     0,
+     0
+    ],
+    "adsTotal": 6,
+    "local": 2,
+    "biz": 2
+   }
+  },
+  {
+   "brand": "纯朴",
+   "total": 22,
+   "s": {
+    "goods": 2,
+    "bigLive": 6,
+    "material": 6,
+    "ads": [
+     6,
+     0,
+     0,
+     0,
+     0
+    ],
+    "adsTotal": 6,
+    "local": 2,
+    "biz": 0
+   }
+  },
+  {
+   "brand": "自然堂",
+   "total": 22,
+   "s": {
+    "goods": 2,
+    "bigLive": 6,
+    "material": 6,
+    "ads": [
+     8,
+     0,
+     0,
+     0,
+     0
+    ],
+    "adsTotal": 8,
+    "local": 0,
+    "biz": 0
+   }
+  },
+  {
+   "brand": "BABI",
+   "total": 22,
+   "s": {
+    "goods": 2,
+    "bigLive": 2,
+    "material": 6,
+    "ads": [
+     8,
+     0,
+     0,
+     0,
+     0
+    ],
+    "adsTotal": 8,
+    "local": 2,
+    "biz": 2
+   }
+  },
+  {
+   "brand": "BUV",
+   "total": 18,
+   "s": {
+    "goods": 2,
+    "bigLive": 2,
+    "material": 6,
+    "ads": [
+     6,
+     0,
+     0,
+     0,
+     0
+    ],
+    "adsTotal": 6,
+    "local": 2,
+    "biz": 0
+   }
+  },
+  {
+   "brand": "阿芙精油",
+   "total": 18,
+   "s": {
+    "goods": 2,
+    "bigLive": 4,
+    "material": 4,
+    "ads": [
+     4,
+     0,
+     0,
+     0,
+     0
+    ],
+    "adsTotal": 4,
+    "local": 2,
+    "biz": 2
+   }
+  },
+  {
+   "brand": "M3",
+   "total": 16,
+   "s": {
+    "goods": 2,
+    "bigLive": 2,
+    "material": 6,
+    "ads": [
+     4,
+     0,
+     0,
+     0,
+     0
+    ],
+    "adsTotal": 4,
+    "local": 2,
+    "biz": 0
+   }
+  },
+  {
+   "brand": "百雀羚护肤",
+   "total": 14,
+   "s": {
+    "goods": 2,
+    "bigLive": 2,
+    "material": 8,
+    "ads": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "adsTotal": 0,
+    "local": 2,
+    "biz": 0
+   }
+  },
+  {
+   "brand": "花西子",
+   "total": 14,
+   "s": {
+    "goods": 2,
+    "bigLive": 2,
+    "material": 6,
+    "ads": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "adsTotal": 0,
+    "local": 2,
+    "biz": 2
+   }
+  },
+  {
+   "brand": "丸美",
+   "total": 12,
+   "s": {
+    "goods": 2,
+    "bigLive": 4,
+    "material": 0,
+    "ads": [
+     4,
+     0,
+     0,
+     0,
+     0
+    ],
+    "adsTotal": 4,
+    "local": 2,
+    "biz": 0
+   }
+  },
+  {
+   "brand": "敷尔佳",
+   "total": 12,
+   "s": {
+    "goods": 2,
+    "bigLive": 6,
+    "material": 0,
+    "ads": [
+     2,
+     0,
+     0,
+     0,
+     0
+    ],
+    "adsTotal": 2,
+    "local": 2,
+    "biz": 0
+   }
+  },
+  {
+   "brand": "C咖",
+   "total": 12,
+   "s": {
+    "goods": 2,
+    "bigLive": 6,
+    "material": 0,
+    "ads": [
+     4,
+     0,
+     0,
+     0,
+     0
+    ],
+    "adsTotal": 4,
+    "local": 0,
+    "biz": 0
+   }
+  },
+  {
+   "brand": "美康粉黛",
+   "total": 12,
+   "s": {
+    "goods": 2,
+    "bigLive": 6,
+    "material": 0,
+    "ads": [
+     2,
+     0,
+     0,
+     0,
+     0
+    ],
+    "adsTotal": 2,
+    "local": 2,
+    "biz": 0
+   }
+  },
+  {
+   "brand": "谷雨",
+   "total": 10,
+   "s": {
+    "goods": 2,
+    "bigLive": 0,
+    "material": 0,
+    "ads": [
+     8,
+     0,
+     0,
+     0,
+     0
+    ],
+    "adsTotal": 8,
+    "local": 0,
+    "biz": 0
+   }
+  },
+  {
+   "brand": "珂曼",
+   "total": 10,
+   "s": {
+    "goods": 2,
+    "bigLive": 0,
+    "material": 6,
+    "ads": [
+     2,
+     0,
+     0,
+     0,
+     0
+    ],
+    "adsTotal": 2,
+    "local": 0,
+    "biz": 0
+   }
+  },
+  {
+   "brand": "黛莱皙",
+   "total": 10,
+   "s": {
+    "goods": 0,
+    "bigLive": 0,
+    "material": 0,
+    "ads": [
+     10,
+     0,
+     0,
+     0,
+     0
+    ],
+    "adsTotal": 10,
+    "local": 0,
+    "biz": 0
+   }
+  }
+ ]
+}

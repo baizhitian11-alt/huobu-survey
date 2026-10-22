@@ -479,6 +479,30 @@
     });
   }
 
+  /* ---------- 站点内小文件（如美力值榜单 leaderboard-data.json） ----------
+   * 写在默认分支的 docs/ 下，客户页同源读取，不受 raw.githubusercontent 在部分网络下不可达的影响。
+   * Pages 重新构建后生效（一般 1 分钟内）。
+   */
+  function putSiteFile(path, base64, message) {
+    if (!enabled()) return Promise.reject(new Error('需要 token 才能发布'));
+    var branch = (CFG.github && CFG.github.branch) || 'main';
+    return fetch(API + '/repos/' + GH.repo + '/contents/' + path + '?ref=' + branch,
+      { headers: headers(true), cache: 'no-store' }).then(function (r) {
+      return r.ok ? r.json() : null;
+    }).then(function (cur) {
+      var payload = { message: message || ('update ' + path), content: base64, branch: branch };
+      if (cur && cur.sha) payload.sha = cur.sha;
+      return fetch(API + '/repos/' + GH.repo + '/contents/' + path, {
+        method: 'PUT', headers: headers(true, true), body: JSON.stringify(payload),
+      });
+    }).then(function (r) {
+      return r.json().then(function (j) {
+        if (!r.ok) throw new Error((j && j.message) || ('HTTP ' + r.status));
+        return { ok: true, path: path, url: (j.content && j.content.html_url) || '' };
+      });
+    });
+  }
+
   /** 删除 data 分支上的文件（运营侧删除错传的凭证） */
   function deleteFile(path) {
     if (!enabled()) return Promise.reject(new Error('需要 token'));
@@ -514,6 +538,7 @@
     parseVouchers: parseVouchers,
     voucherCommentBody: voucherCommentBody,
     uploadFile: uploadFile,
+    putSiteFile: putSiteFile,
     deleteFile: deleteFile,
   };
 }));
