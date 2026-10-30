@@ -1,6 +1,25 @@
 {
- "updatedAt": "2026-10-22",
+ "updatedAt": "2026-10-30",
  "rows": [
+  {
+   "brand": "谷雨",
+   "total": 26,
+   "s": {
+    "goods": 2,
+    "bigLive": 6,
+    "material": 8,
+    "ads": [
+     2,
+     2,
+     0,
+     0,
+     2
+    ],
+    "adsTotal": 6,
+    "local": 2,
+    "biz": 2
+   }
+  },
   {
    "brand": "珀莱雅",
    "total": 24,
@@ -13,6 +32,25 @@
      2,
      0,
      2,
+     2
+    ],
+    "adsTotal": 6,
+    "local": 2,
+    "biz": 2
+   }
+  },
+  {
+   "brand": "完美日记",
+   "total": 24,
+   "s": {
+    "goods": 2,
+    "bigLive": 6,
+    "material": 6,
+    "ads": [
+     2,
+     2,
+     0,
+     0,
      2
     ],
     "adsTotal": 6,
@@ -41,17 +79,17 @@
   },
   {
    "brand": "纯朴",
-   "total": 22,
+   "total": 24,
    "s": {
     "goods": 2,
     "bigLive": 6,
-    "material": 6,
+    "material": 8,
     "ads": [
-     0,
      2,
      2,
+     2,
      0,
-     2
+     0
     ],
     "adsTotal": 6,
     "local": 2,
@@ -78,8 +116,46 @@
    }
   },
   {
+   "brand": "丸美",
+   "total": 20,
+   "s": {
+    "goods": 2,
+    "bigLive": 6,
+    "material": 6,
+    "ads": [
+     0,
+     0,
+     0,
+     0,
+     2
+    ],
+    "adsTotal": 2,
+    "local": 2,
+    "biz": 2
+   }
+  },
+  {
+   "brand": "三资堂",
+   "total": 20,
+   "s": {
+    "goods": 2,
+    "bigLive": 6,
+    "material": 6,
+    "ads": [
+     2,
+     2,
+     0,
+     0,
+     0
+    ],
+    "adsTotal": 4,
+    "local": 2,
+    "biz": 0
+   }
+  },
+  {
    "brand": "BABI",
-   "total": 22,
+   "total": 20,
    "s": {
     "goods": 2,
     "bigLive": 2,
@@ -89,9 +165,9 @@
      2,
      2,
      0,
-     2
+     0
     ],
-    "adsTotal": 8,
+    "adsTotal": 6,
     "local": 2,
     "biz": 2
    }
@@ -121,7 +197,7 @@
    "s": {
     "goods": 2,
     "bigLive": 4,
-    "material": 4,
+    "material": 6,
     "ads": [
      0,
      0,
@@ -154,8 +230,8 @@
    }
   },
   {
-   "brand": "百雀羚护肤",
-   "total": 14,
+   "brand": "百雀羚",
+   "total": 18,
    "s": {
     "goods": 2,
     "bigLive": 2,
@@ -166,6 +242,44 @@
      0,
      0,
      0
+    ],
+    "adsTotal": 4,
+    "local": 2,
+    "biz": 0
+   }
+  },
+  {
+   "brand": "蒂洛薇",
+   "total": 16,
+   "s": {
+    "goods": 2,
+    "bigLive": 0,
+    "material": 6,
+    "ads": [
+     0,
+     0,
+     2,
+     2,
+     2
+    ],
+    "adsTotal": 6,
+    "local": 2,
+    "biz": 0
+   }
+  },
+  {
+   "brand": "小树美",
+   "total": 16,
+   "s": {
+    "goods": 2,
+    "bigLive": 2,
+    "material": 6,
+    "ads": [
+     0,
+     2,
+     0,
+     0,
+     2
     ],
     "adsTotal": 4,
     "local": 2,
@@ -192,22 +306,22 @@
    }
   },
   {
-   "brand": "丸美",
+   "brand": "韩束",
    "total": 12,
    "s": {
     "goods": 2,
-    "bigLive": 4,
-    "material": 0,
+    "bigLive": 0,
+    "material": 6,
     "ads": [
      0,
-     0,
+     2,
      0,
      0,
      2
     ],
-    "adsTotal": 2,
-    "local": 2,
-    "biz": 2
+    "adsTotal": 4,
+    "local": 0,
+    "biz": 0
    }
   },
   {
@@ -249,6 +363,25 @@
    }
   },
   {
+   "brand": "橘朵",
+   "total": 12,
+   "s": {
+    "goods": 2,
+    "bigLive": 0,
+    "material": 0,
+    "ads": [
+     2,
+     2,
+     2,
+     2,
+     2
+    ],
+    "adsTotal": 10,
+    "local": 0,
+    "biz": 0
+   }
+  },
+  {
    "brand": "美康粉黛",
    "total": 12,
    "s": {
@@ -268,20 +401,20 @@
    }
   },
   {
-   "brand": "谷雨",
-   "total": 10,
+   "brand": "慕可",
+   "total": 12,
    "s": {
     "goods": 2,
     "bigLive": 0,
     "material": 0,
     "ads": [
-     0,
+     2,
      2,
      2,
      2,
      2
     ],
-    "adsTotal": 8,
+    "adsTotal": 10,
     "local": 0,
     "biz": 0
    }
@@ -306,6 +439,25 @@
    }
   },
   {
+   "brand": "上海家化",
+   "total": 10,
+   "s": {
+    "goods": 2,
+    "bigLive": 0,
+    "material": 0,
+    "ads": [
+     0,
+     2,
+     2,
+     2,
+     2
+    ],
+    "adsTotal": 8,
+    "local": 0,
+    "biz": 0
+   }
+  },
+  {
    "brand": "黛莱皙",
    "total": 10,
    "s": {
@@ -325,26 +477,7 @@
    }
   },
   {
-   "brand": "慕可",
-   "total": 8,
-   "s": {
-    "goods": 0,
-    "bigLive": 0,
-    "material": 0,
-    "ads": [
-     2,
-     2,
-     2,
-     0,
-     2
-    ],
-    "adsTotal": 8,
-    "local": 0,
-    "biz": 0
-   }
-  },
-  {
-   "brand": "橘朵",
+   "brand": "必扬",
    "total": 8,
    "s": {
     "goods": 2,
@@ -363,7 +496,26 @@
    }
   },
   {
-   "brand": "羽素",
+   "brand": "秘地",
+   "total": 8,
+   "s": {
+    "goods": 0,
+    "bigLive": 0,
+    "material": 0,
+    "ads": [
+     2,
+     0,
+     2,
+     2,
+     2
+    ],
+    "adsTotal": 8,
+    "local": 0,
+    "biz": 0
+   }
+  },
+  {
+   "brand": "美尚",
    "total": 8,
    "s": {
     "goods": 0,
@@ -382,45 +534,7 @@
    }
   },
   {
-   "brand": "必扬",
-   "total": 6,
-   "s": {
-    "goods": 2,
-    "bigLive": 0,
-    "material": 0,
-    "ads": [
-     0,
-     2,
-     0,
-     0,
-     2
-    ],
-    "adsTotal": 4,
-    "local": 0,
-    "biz": 0
-   }
-  },
-  {
-   "brand": "韩束",
-   "total": 6,
-   "s": {
-    "goods": 2,
-    "bigLive": 0,
-    "material": 0,
-    "ads": [
-     0,
-     2,
-     0,
-     0,
-     2
-    ],
-    "adsTotal": 4,
-    "local": 0,
-    "biz": 0
-   }
-  },
-  {
-   "brand": "秘地",
+   "brand": "HFP",
    "total": 6,
    "s": {
     "goods": 0,
@@ -428,8 +542,8 @@
     "material": 0,
     "ads": [
      2,
-     0,
      2,
+     0,
      0,
      2
     ],
@@ -458,44 +572,6 @@
    }
   },
   {
-   "brand": "上海家化",
-   "total": 6,
-   "s": {
-    "goods": 2,
-    "bigLive": 0,
-    "material": 0,
-    "ads": [
-     0,
-     2,
-     0,
-     0,
-     2
-    ],
-    "adsTotal": 4,
-    "local": 0,
-    "biz": 0
-   }
-  },
-  {
-   "brand": "蒂洛薇",
-   "total": 6,
-   "s": {
-    "goods": 0,
-    "bigLive": 0,
-    "material": 0,
-    "ads": [
-     0,
-     0,
-     2,
-     2,
-     2
-    ],
-    "adsTotal": 6,
-    "local": 0,
-    "biz": 0
-   }
-  },
-  {
    "brand": "原生密码",
    "total": 6,
    "s": {
@@ -515,8 +591,217 @@
    }
   },
   {
-   "brand": "美尚",
+   "brand": "仙花秀",
    "total": 6,
+   "s": {
+    "goods": 0,
+    "bigLive": 0,
+    "material": 0,
+    "ads": [
+     2,
+     2,
+     0,
+     0,
+     2
+    ],
+    "adsTotal": 6,
+    "local": 0,
+    "biz": 0
+   }
+  },
+  {
+   "brand": "Diary言之有物",
+   "total": 6,
+   "s": {
+    "goods": 2,
+    "bigLive": 0,
+    "material": 0,
+    "ads": [
+     0,
+     0,
+     2,
+     0,
+     2
+    ],
+    "adsTotal": 4,
+    "local": 0,
+    "biz": 0
+   }
+  },
+  {
+   "brand": "林清轩",
+   "total": 4,
+   "s": {
+    "goods": 2,
+    "bigLive": 0,
+    "material": 0,
+    "ads": [
+     0,
+     2,
+     0,
+     0,
+     0
+    ],
+    "adsTotal": 2,
+    "local": 0,
+    "biz": 0
+   }
+  },
+  {
+   "brand": "卡姿兰",
+   "total": 4,
+   "s": {
+    "goods": 0,
+    "bigLive": 0,
+    "material": 0,
+    "ads": [
+     0,
+     2,
+     0,
+     0,
+     2
+    ],
+    "adsTotal": 4,
+    "local": 0,
+    "biz": 0
+   }
+  },
+  {
+   "brand": "造物者",
+   "total": 4,
+   "s": {
+    "goods": 0,
+    "bigLive": 0,
+    "material": 0,
+    "ads": [
+     0,
+     2,
+     0,
+     0,
+     2
+    ],
+    "adsTotal": 4,
+    "local": 0,
+    "biz": 0
+   }
+  },
+  {
+   "brand": "可丽金",
+   "total": 4,
+   "s": {
+    "goods": 0,
+    "bigLive": 0,
+    "material": 0,
+    "ads": [
+     0,
+     0,
+     0,
+     2,
+     2
+    ],
+    "adsTotal": 4,
+    "local": 0,
+    "biz": 0
+   }
+  },
+  {
+   "brand": "玫瑰颂",
+   "total": 4,
+   "s": {
+    "goods": 0,
+    "bigLive": 0,
+    "material": 0,
+    "ads": [
+     2,
+     0,
+     0,
+     0,
+     2
+    ],
+    "adsTotal": 4,
+    "local": 0,
+    "biz": 0
+   }
+  },
+  {
+   "brand": "羽素",
+   "total": 4,
+   "s": {
+    "goods": 0,
+    "bigLive": 0,
+    "material": 0,
+    "ads": [
+     2,
+     2,
+     0,
+     0,
+     0
+    ],
+    "adsTotal": 4,
+    "local": 0,
+    "biz": 0
+   }
+  },
+  {
+   "brand": "可复美",
+   "total": 4,
+   "s": {
+    "goods": 0,
+    "bigLive": 0,
+    "material": 0,
+    "ads": [
+     0,
+     0,
+     2,
+     0,
+     2
+    ],
+    "adsTotal": 4,
+    "local": 0,
+    "biz": 0
+   }
+  },
+  {
+   "brand": "SAZA",
+   "total": 4,
+   "s": {
+    "goods": 0,
+    "bigLive": 0,
+    "material": 0,
+    "ads": [
+     2,
+     0,
+     0,
+     0,
+     2
+    ],
+    "adsTotal": 4,
+    "local": 0,
+    "biz": 0
+   }
+  },
+  {
+   "brand": "植卡美",
+   "total": 4,
+   "s": {
+    "goods": 0,
+    "bigLive": 0,
+    "material": 0,
+    "ads": [
+     2,
+     0,
+     0,
+     0,
+     2
+    ],
+    "adsTotal": 4,
+    "local": 0,
+    "biz": 0
+   }
+  },
+  {
+   "brand": "小奥汀",
+   "total": 4,
    "s": {
     "goods": 0,
     "bigLive": 0,
@@ -526,9 +811,28 @@
      2,
      2,
      0,
+     0
+    ],
+    "adsTotal": 4,
+    "local": 0,
+    "biz": 0
+   }
+  },
+  {
+   "brand": "奕沃",
+   "total": 4,
+   "s": {
+    "goods": 0,
+    "bigLive": 0,
+    "material": 0,
+    "ads": [
+     0,
+     0,
+     2,
+     0,
      2
     ],
-    "adsTotal": 6,
+    "adsTotal": 4,
     "local": 0,
     "biz": 0
    }

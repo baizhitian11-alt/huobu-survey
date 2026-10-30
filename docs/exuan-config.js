@@ -33,7 +33,7 @@ window.HB_EXUAN = {
    */
   leaderboard: {
     title: '美力值TOP品牌榜单',
-    rewardTip: '10.23号～10.30号享受加码腾飞！',
+    rewardTip: '10.30-11.11 可享受加码腾飞！',
     note: '如未上榜，请别灰心，可在下方「二、排位赛，传凭证，领加码激励！」部分继续上传凭证，下周重新刷榜',
     /* 六维图维度（key 对应 data/leaderboard.json 里 s 的字段；ads 为投放力总分） */
     dims: [
